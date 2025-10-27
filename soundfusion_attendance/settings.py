@@ -66,8 +66,9 @@ WSGI_APPLICATION = 'soundfusion_attendance.wsgi.application'
 
 # Database Configuration
 # Use MySQL for local development, PostgreSQL for production on Render
-if os.environ.get('DATABASE_URL'):
-    # Production - Use PostgreSQL on Render
+# Database Configuration - Force PostgreSQL on Render
+if os.environ.get('RENDER'):
+    # Production - Force PostgreSQL on Render
     import dj_database_url
     DATABASES = {
         'default': dj_database_url.config(
@@ -77,7 +78,7 @@ if os.environ.get('DATABASE_URL'):
         )
     }
 else:
-    # Local development - Use your existing MySQL configuration
+    # Local development - Use MySQL
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -91,7 +92,6 @@ else:
             },
         }
     }
-
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
