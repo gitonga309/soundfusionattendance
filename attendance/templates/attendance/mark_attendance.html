@@ -35,10 +35,26 @@
       font-size: 24px;
       color: #00d4ff;
     }
+    .date-info {
+      background: rgba(0, 212, 255, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
     form {
       display: flex;
       flex-direction: column;
       gap: 12px;
+    }
+    .form-group {
+      text-align: left;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #00d4ff;
     }
     input, select {
       padding: 12px;
@@ -49,6 +65,7 @@
       background: rgba(255,255,255,0.1);
       color: #fff;
       transition: 0.3s;
+      width: 100%;
     }
     input:focus, select:focus {
       border-color: #00d4ff;
@@ -80,6 +97,14 @@
     .back-link a:hover {
       text-decoration: underline;
     }
+    .edit-notice {
+      background: rgba(255, 234, 167, 0.2);
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      color: #ffeaa7;
+    }
     @media (max-width: 420px) {
       .attendance-container {
         padding: 20px 15px;
@@ -92,12 +117,51 @@
 </head>
 <body>
   <div class="attendance-container">
-    <h2>Mark Attendance</h2>
+    <h2>
+      {% if created %}
+        Mark Today's Attendance
+      {% else %}
+        Update Today's Attendance
+      {% endif %}
+    </h2>
+    
+    <div class="date-info">
+      📅 Date: {{ today|date:"F j, Y" }}<br>
+      ⏰ Time: {% now "H:i" %}
+    </div>
+
+    {% if not created %}
+    <div class="edit-notice">
+      ⚠️ You've already marked attendance today. You can update the details.
+    </div>
+    {% endif %}
+
     <form method="POST">
       {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit">Submit Attendance</button>
+      
+      <div class="form-group">
+        <label for="id_event">Event/Venue:</label>
+        <input type="text" name="event" id="id_event" 
+               value="{{ form.event.value|default:'' }}" 
+               placeholder="Enter event or venue name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="id_overtime_hours">Overtime Hours:</label>
+        <input type="number" name="overtime_hours" id="id_overtime_hours" 
+               value="{{ form.overtime_hours.value|default:'0' }}" 
+               min="0" max="24" placeholder="0" required>
+      </div>
+
+      <button type="submit">
+        {% if created %}
+          Submit Attendance
+        {% else %}
+          Update Attendance
+        {% endif %}
+      </button>
     </form>
+    
     <div class="back-link">
       <a href="{% url 'dashboard' %}">Back to Dashboard</a>
     </div>

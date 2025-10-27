@@ -78,6 +78,7 @@ def view_attendance(request):
         'total_balance': total_balance  # You were missing this line
     })
 
+
 @login_required
 def mark_attendance(request):
     today = timezone.now().date()
@@ -95,12 +96,14 @@ def mark_attendance(request):
         form = AttendanceForm(request.POST, instance=record)
         if form.is_valid():
             record = form.save(commit=False)
+            
+            # Force today's date and current time
+            record.date = today
+            record.check_in_time = timezone.now().time()
+            
             # Calculate amount_paid based on overtime
             record.amount_paid = 1000 + (record.overtime_hours * 100)
             record.save()
-            
-            # REMOVE the manual balance update - let the signal handle it
-            # The signal will automatically update balance when record is created
             
             messages.success(request, "Attendance marked successfully!")
             return redirect('dashboard')
@@ -110,7 +113,8 @@ def mark_attendance(request):
     return render(request, 'attendance/mark_attendance.html', {
         'form': form, 
         'record': record,
-        'created': created
+        'created': created,
+        'today': today
     })
 
 @login_required
@@ -118,28 +122,33 @@ def edit_attendance(request, record_id):
     record = get_object_or_404(AttendanceRecord, pk=record_id, user=request.user)
 
     if request.method == 'POST':
-        # Only allow editing overtime
-        overtime_hours = request.POST.get('overtime_hours')
-        try:
-            overtime_hours = int(overtime_hours)
-        except ValueError:
-            messages.error(request, "Overtime must be a number")
-            return redirect('view_attendance')
-
         # Get old amount for balance adjustment
         old_amount = record.amount_paid
+        old_overtime = record.overtime_hours
         
+        # Get new overtime from form
+        overtime_hours = request.POST.get('overtime_hours')
+        event = request.POST.get('event', record.event)
+        
+        try:
+            overtime_hours = int(overtime_hours)
+        except (ValueError, TypeError):
+            messages.error(request, "Overtime must be a valid number")
+            return redirect('view_attendance')
+
         # Update record
         record.overtime_hours = overtime_hours
+        record.event = event
         record.amount_paid = 1000 + (overtime_hours * 100)
         record.save()
 
         # Update profile balance with the difference
         profile = Profile.objects.get(user=request.user)
-        profile.balance += (record.amount_paid - old_amount)
+        amount_difference = record.amount_paid - old_amount
+        profile.balance += amount_difference
         profile.save()
         
-        messages.success(request, "Overtime updated successfully!")
+        messages.success(request, f"Attendance updated! Overtime: {old_overtime} → {overtime_hours} hours")
         return redirect('view_attendance')
 
     return render(request, 'attendance/edit_attendance.html', {'record': record})

@@ -1,4 +1,3 @@
-# attendance/forms.py
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
@@ -19,28 +18,24 @@ class UserRegisterForm(UserCreationForm):
         model = User
         fields = ['username', 'email', 'phone_number', 'date_of_birth', 'disability', 'password1', 'password2']
 
-    # Validate email uniqueness
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
             raise ValidationError("This email is already registered.")
         return email
 
-    # Validate username uniqueness
     def clean_username(self):
         username = self.cleaned_data.get('username')
         if User.objects.filter(username=username).exists():
             raise ValidationError("This username is already taken.")
         return username
 
-    # Validate phone number uniqueness
     def clean_phone_number(self):
         phone_number = self.cleaned_data.get('phone_number')
         if Profile.objects.filter(phone_number=phone_number).exists():
             raise ValidationError("This phone number is already registered.")
         return phone_number
 
-    # Ensure passwords match
     def clean(self):
         cleaned_data = super().clean()
         password1 = cleaned_data.get('password1')
@@ -50,9 +45,8 @@ class UserRegisterForm(UserCreationForm):
             raise ValidationError("Passwords do not match.")
         return cleaned_data
 
-    # Save user and profile
     def save(self, commit=True):
-        user = super().save(commit=False)  # Don't commit yet
+        user = super().save(commit=False)
         user.email = self.cleaned_data['email']
         if commit:
             user.save()
@@ -62,16 +56,25 @@ class UserRegisterForm(UserCreationForm):
                     'phone_number': self.cleaned_data.get('phone_number'),
                     'date_of_birth': self.cleaned_data.get('date_of_birth'),
                     'disability': self.cleaned_data.get('disability'),
-                    'email': self.cleaned_data.get('email'),  # keep in Profile if you want
+                    'email': self.cleaned_data.get('email'),
                 }
             )
         return user
+
 class AttendanceForm(forms.ModelForm):
     class Meta:
         model = AttendanceRecord
-        fields = ['event', 'overtime_hours', 'date']
+        fields = ['event', 'overtime_hours']  # ✅ ONLY these two fields
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
+            'event': forms.TextInput(attrs={
+                'placeholder': 'Enter event/venue',
+                'required': 'required'
+            }),
+            'overtime_hours': forms.NumberInput(attrs={
+                'placeholder': 'Overtime hours',
+                'min': '0',
+                'value': '0'
+            })
         }
 
     def clean(self):
