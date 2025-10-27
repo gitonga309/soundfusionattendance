@@ -80,35 +80,38 @@ def view_attendance(request):
 
 @login_required
 def mark_attendance(request):
+    today = timezone.now().date()
     user = request.user
 
+    # Check if record exists for today
+    try:
+        record = AttendanceRecord.objects.get(user=user, date=today)
+        created = False
+    except AttendanceRecord.DoesNotExist:
+        record = AttendanceRecord(user=user, date=today)
+        created = True
+
     if request.method == "POST":
-        form = AttendanceForm(request.POST)
+        form = AttendanceForm(request.POST, instance=record)
         if form.is_valid():
             record = form.save(commit=False)
-            record.user = user
-            selected_date = record.date  # Get the selected date from form
+            # Calculate amount_paid based on overtime
+            record.amount_paid = 1000 + (record.overtime_hours * 100)
+            record.save()
             
-            # Check if record exists for the SELECTED DATE (not today)
-            try:
-                existing_record = AttendanceRecord.objects.get(user=user, date=selected_date)
-                # Update existing record
-                existing_record.event = record.event
-                existing_record.overtime_hours = record.overtime_hours
-                existing_record.amount_paid = 1000 + (record.overtime_hours * 100)
-                existing_record.save()
-                messages.success(request, "Attendance updated successfully!")
-            except AttendanceRecord.DoesNotExist:
-                # Create new record
-                record.amount_paid = 1000 + (record.overtime_hours * 100)
-                record.save()
-                messages.success(request, "Attendance marked successfully!")
+            # REMOVE the manual balance update - let the signal handle it
+            # The signal will automatically update balance when record is created
             
+            messages.success(request, "Attendance marked successfully!")
             return redirect('dashboard')
     else:
-        form = AttendanceForm()
+        form = AttendanceForm(instance=record)
 
-    return render(request, 'attendance/mark_attendance.html', {'form': form})
+    return render(request, 'attendance/mark_attendance.html', {
+        'form': form, 
+        'record': record,
+        'created': created
+    })
 
 @login_required
 def edit_attendance(request, record_id):

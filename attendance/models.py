@@ -82,3 +82,10 @@ class AttendanceRecord(models.Model):
 
     #profile.balance = total_unpaid
     #profile.save()
+@receiver(post_save, sender=AttendanceRecord)
+def update_balance_on_attendance(sender, instance, created, **kwargs):
+    if created:
+        profile = Profile.objects.get(user=instance.user)
+        amount = instance.daily_pay
+        profile.balance += amount
+        profile.save()
