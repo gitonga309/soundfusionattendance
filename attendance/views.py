@@ -75,7 +75,7 @@ def view_attendance(request):
     
     return render(request, 'attendance/view_attendance.html', {
         'records': records,
-        'total_balance': total_balance
+        'total_balance': total_balance  # You were missing this line
     })
 
 @login_required
@@ -95,13 +95,26 @@ def mark_attendance(request):
         form = AttendanceForm(request.POST, instance=record)
         if form.is_valid():
             record = form.save(commit=False)
-            # Calculate amount_paid based on overtime
-            record.amount_paid = 1000 + (record.overtime_hours * 100)
+            
+            # Calculate the NEW amount_paid
+            new_amount_paid = 1000 + (record.overtime_hours * 100)
+            
+            # If UPDATING existing record, adjust balance correctly
+            if not created:
+                # Get the difference between new and old amount
+                old_amount_paid = record.amount_paid  # This gets the OLD value before save
+                amount_difference = new_amount_paid - old_amount_paid
+            else:
+                # If CREATING new record, use full amount
+                amount_difference = new_amount_paid
+            
+            # Set the new amount_paid
+            record.amount_paid = new_amount_paid
             record.save()
             
-            # Update profile balance
+            # Update profile balance with the difference
             profile = Profile.objects.get(user=user)
-            profile.balance += record.amount_paid
+            profile.balance += amount_difference
             profile.save()
             
             messages.success(request, "Attendance marked successfully!")
