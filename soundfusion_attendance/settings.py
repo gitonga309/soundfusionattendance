@@ -2,8 +2,10 @@
 Django settings for soundfusion_attendance project.
 """
 
-from pathlib import Path
+
 import os
+import dj_database_url  # MAKE SURE THIS IMPORT IS AT TOP
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -67,32 +69,23 @@ WSGI_APPLICATION = 'soundfusion_attendance.wsgi.application'
 # Database Configuration
 # Use MySQL for local development, PostgreSQL for production on Render
 # Database Configuration - Force PostgreSQL on Render
-if os.environ.get('RENDER'):
-    # Production - Force PostgreSQL on Render
-    import dj_database_url
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600,
-            ssl_require=True
-        )
-    }
-else:
-    # Local development - Use MySQL
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'soundfusion_db',
-            'USER': 'root',
-            'PASSWORD': 'alex',
-            'HOST': 'localhost',
-            'PORT': '3310',
-            'OPTIONS': {
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
-        }
-    }
+# Database Configuration
+import dj_database_url
 
+# Default database (will be overridden by DATABASE_URL on Render)
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+# Override with PostgreSQL on Render
+if os.environ.get('DATABASE_URL'):
+    DATABASES['default'] = dj_database_url.config(
+        conn_max_age=600,
+        ssl_require=True
+    )
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
