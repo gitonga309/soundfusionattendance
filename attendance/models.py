@@ -71,14 +71,14 @@ class AttendanceRecord(models.Model):
 
 # Remove the first signal completely
 
-@receiver(post_save, sender=AttendanceRecord)
-def update_user_balance(sender, instance, **kwargs):
-    profile, created = Profile.objects.get_or_create(user=instance.user)
+#@receiver(post_save, sender=AttendanceRecord)
+#def update_user_balance(sender, instance, **kwargs):
+    #profile, created = Profile.objects.get_or_create(user=instance.user)
     
     # Sum the daily_pay of unpaid records, not amount_paid
-    total_unpaid = AttendanceRecord.objects.filter(
-        user=instance.user, is_paid=False
-    ).aggregate(total=Sum('daily_pay'))['total'] or 0  # FIXED: daily_pay instead of amount_paid
+    #total_unpaid = AttendanceRecord.objects.filter(
+        #user=instance.user, is_paid=False
+    #).aggregate(total=Sum('daily_pay'))['total'] or 0  # FIXED: daily_pay instead of amount_paid
 
-    profile.balance = total_unpaid
-    profile.save()
+    #profile.balance = total_unpaid
+    #profile.save()
