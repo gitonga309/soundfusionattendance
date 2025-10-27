@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Attendance Records</title>
+<style>
+  body { font-family: sans-serif; background:#f0f2f5; padding:20px; }
+  .container { max-width:800px; margin:50px auto; }
+  table { width:100%; border-collapse: collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1); margin-top:20px; }
+  th, td { padding:12px; text-align:center; border-bottom:1px solid #ddd; }
+  th { background:#00d4ff; color:#fff; }
+  tr:last-child td { border-bottom:none; }
+  a.button { padding:8px 12px; background:#0a192f; color:#fff; border-radius:8px; text-decoration:none; transition:0.3s; }
+  a.button:hover { background:#1f4068; }
+  a.dashboard-link { display:inline-block; margin-bottom:15px; text-decoration:none; color:#0a192f; font-weight:bold; }
+  a.dashboard-link:hover { color:#1f4068; }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="dashboard-link" href="{% url 'dashboard' %}">&larr; Back to Dashboard</a>
+  <h1>Your Attendance Records</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Check-in</th>
+        <th>Event</th>
+        <th>Overtime Hours</th>
+        <th>Amount Paid (KES)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr>
+        <td>{{ record.date }}</td>
+        <td>{{ record.check_in_time }}</td>
+        <td>{{ record.event|default:"N/A" }}</td>
+        <td>{{ record.overtime_hours }}</td>
+        <td>{{ record.amount_paid }}</td>
+        <td>
+          {% if record.overtime_edit_count < 2 %}
+            <a class="button" href="{% url 'edit_attendance' record.id %}">Edit</a>
+          {% else %}
+            <span>Max edits reached</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">No attendance records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

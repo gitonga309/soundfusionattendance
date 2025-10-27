@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up | Sound Fusion</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Poppins", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0a192f, #1f4068);
+      color: #fff;
+      padding: 20px;
+    }
+    .signup-container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(15px);
+      padding: 30px 25px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    h2 {
+      margin-bottom: 20px;
+      font-size: 24px;
+      color: #00d4ff;
+    }
+    form { display: flex; flex-direction: column; gap: 10px; }
+    label { text-align: left; font-size: 14px; margin-bottom: 4px; }
+    input {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #00d4ff44;
+      outline: none;
+      font-size: 14px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      transition: 0.3s;
+      width: 100%;
+    }
+    input:focus { border-color: #00d4ff; background: rgba(255, 255, 255, 0.15); }
+    .errorlist { color: #ff6b6b; font-size: 13px; margin: 0 0 5px 0; list-style: none; padding-left: 0; }
+    button {
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background-color: #00d4ff;
+      color: #0a192f;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+      margin-top: 5px;
+    }
+    button:hover { background-color: #00a9cc; }
+    .login-link { margin-top: 15px; font-size: 14px; }
+    .login-link a {
+      color: #00d4ff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .login-link a:hover { text-decoration: underline; }
+    @media (max-width: 400px) {
+      .signup-container { padding: 25px 15px; }
+      h2 { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="signup-container">
+    <h2>Create Your Account</h2>
+    <form method="POST">
+      {% csrf_token %}
+      
+      <!-- Loop through form fields to show label, input, and inline errors -->
+      {% for field in form %}
+        <div>
+          {{ field.label_tag }}
+          {{ field }}
+          {% if field.errors %}
+            <ul class="errorlist">
+              {% for error in field.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <button type="submit">Sign Up</button>
+    </form>
+    <div class="login-link">
+      Already have an account? <a href="{% url 'login' %}">Login</a>
+    </div>
+  </div>
+</body>
+</html>

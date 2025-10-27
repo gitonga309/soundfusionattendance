@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Attendance | Sound Fusion</title>
+<style>
+  body { font-family:sans-serif; margin:0; background:#f0f2f5; }
+  .container { max-width:600px; margin:50px auto; padding:20px; }
+  h1 { text-align:center; color:#0a192f; margin-bottom:30px; }
+  form { background:#fff; padding:20px; border-radius:12px; box-shadow:0 5px 15px rgba(0,0,0,0.1); }
+  label { display:block; margin-top:15px; font-weight:bold; color:#333; }
+  input, select { width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #ccc; }
+  button { margin-top:20px; padding:12px 20px; background:#0a192f; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:0.3s; }
+  button:hover { background:#1f4068; }
+  a { display:inline-block; margin-top:15px; text-decoration:none; color:#0a192f; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Edit Attendance</h1>
+
+  <form method="POST">
+    {% csrf_token %}
+    <label for="event">Event</label>
+    <input type="text" id="event" name="event" value="{{ record.event }}" required>
+
+    <label for="overtime_hours">Overtime Hours</label>
+    <input type="number" id="overtime_hours" name="overtime_hours" value="{{ record.overtime_hours }}" min="0">
+
+    <label for="date">Date</label>
+    <input type="date" id="date" name="date" value="{{ record.date }}" readonly>
+
+    <button type="submit">Update Attendance</button>
+  </form>
+
+  <a href="{% url 'dashboard' %}">Back to Dashboard</a>
+</div>
+</body>
+</html>

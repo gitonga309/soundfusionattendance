@@ -1,0 +1,112 @@
+<!-- attendance/templates/attendance/dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | Sound Fusion</title>
+<style>
+  body {
+    font-family: "Poppins", sans-serif;
+    margin: 0;
+    background: #f0f2f5;
+    color: #333;
+  }
+  .container {
+    max-width: 900px;
+    margin: 50px auto;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #0a192f;
+    margin-bottom: 30px;
+  }
+  .card {
+    background: #fff;
+    padding: 25px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    margin-bottom: 15px;
+    color: #00d4ff;
+  }
+  .card p {
+    margin: 6px 0;
+  }
+  .links {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .links a {
+    padding: 12px 20px;
+    background: #0a192f;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: 0.3s;
+  }
+  .links a:hover {
+    background: #1f4068;
+  }
+  @media(max-width:600px){
+    .links { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome, {{ user.username }}!</h1>
+
+    <div class="card">
+      <h2>Profile Summary</h2>
+      <p><strong>Name:</strong> {{ user.get_full_name|default:user.username }}</p>
+      <p><strong>Email:</strong> {{ user.email }}</p>
+      <p><strong>Today’s Attendance:</strong> {{ attendance_status }}</p>
+      {% if today_record %}
+        <p><strong>Event:</strong> {{ today_record.event }}</p>
+        <p><strong>Overtime Hours:</strong> {{ today_record.overtime_hours }}</p>
+        <p><strong>Amount Paid Today:</strong> KES {{ today_record.amount_paid }}</p>
+      {% endif %}
+      <p><strong>Total Balance:</strong> KES {{ total_balance }}</p>
+      <h2 style="margin-top: 30px;">Recent Balance Adjustments</h2>
+<div style="overflow-x:auto;">
+  <table style="width:100%; border-collapse: collapse; margin-top:10px;">
+    <tr style="background:#0a192f; color:#00d4ff;">
+      <th style="padding:10px;">Date</th>
+      <th style="padding:10px;">Amount</th>
+      <th style="padding:10px;">Reason</th>
+    </tr>
+    {% for adjustment in adjustments %}
+    <tr style="text-align:center; border-bottom:1px solid #00d4ff33;">
+      <td style="padding:8px;">{{ adjustment.date|date:"Y-m-d H:i" }}</td>
+      <td style="padding:8px;">
+        {% if adjustment.amount >= 0 %}
+          <span style="color:#00c853;">+{{ adjustment.amount }}</span>
+        {% else %}
+          <span style="color:#e53935;">{{ adjustment.amount }}</span>
+        {% endif %}
+      </td>
+      <td style="padding:8px;">{{ adjustment.reason|default:"(No reason provided)" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="3" style="padding:10px;">No balance adjustments yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+
+      <div class="links">
+        <a href="{% url 'mark_attendance' %}">Mark Attendance</a>
+        <a href="{% url 'view_attendance' %}">View Attendance Records</a>
+        <a href="{% url 'logout' %}">Logout</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
