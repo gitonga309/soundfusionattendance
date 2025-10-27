@@ -60,21 +60,25 @@ class AttendanceRecord(models.Model):
         overtime_rate = 100
         return base_pay + (self.overtime_hours * overtime_rate)
 
-@receiver(post_save, sender=AttendanceRecord)
-def update_balance_on_attendance(sender, instance, created, **kwargs):
-    if created:
-        profile = Profile.objects.get(user=instance.user)
-        amount = instance.daily_pay
-        profile.balance += amount
-        profile.save()
+#@receiver(post_save, sender=AttendanceRecord)
+#def update_balance_on_attendance(sender, instance, created, **kwargs):
+    #if created:
+        #profile = Profile.objects.get(user=instance.user)
+        #amount = instance.daily_pay
+        #profile.balance += amount
+        #profile.save()
 
+
+# Remove the first signal completely
 
 @receiver(post_save, sender=AttendanceRecord)
 def update_user_balance(sender, instance, **kwargs):
     profile, created = Profile.objects.get_or_create(user=instance.user)
+    
+    # Sum the daily_pay of unpaid records, not amount_paid
     total_unpaid = AttendanceRecord.objects.filter(
-    user=instance.user, is_paid=False
-).aggregate(total=Sum('amount_paid'))['total'] or 0
+        user=instance.user, is_paid=False
+    ).aggregate(total=Sum('daily_pay'))['total'] or 0  # FIXED: daily_pay instead of amount_paid
 
     profile.balance = total_unpaid
     profile.save()
