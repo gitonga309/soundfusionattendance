@@ -1,12 +1,5 @@
-#from django.contrib import admin
-
-# Register your models here.
-#from .models import AttendanceRecord,Profile
-
-#admin.site.register(AttendanceRecord)
-#admin.site.register(Profile)
 from django.contrib import admin
-from .models import Profile, AttendanceRecord,BalanceAdjustment
+from .models import Profile, AttendanceRecord, Event, BalanceAdjustment
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
@@ -16,45 +9,43 @@ class ProfileAdmin(admin.ModelAdmin):
     fields = ('user', 'phone_number', 'email', 'balance', 'date_of_birth', 'disability')
     readonly_fields = ('user',)
 
-    def save_model(self, request, obj, form, change):
-        if 'balance' in form.changed_data:
-            old_balance = Profile.objects.get(pk=obj.pk).balance if obj.pk else 0
-            new_balance = obj.balance
-            diff = new_balance - old_balance
-            if diff != 0:
-                BalanceAdjustment.objects.create(
-                    profile=obj,
-                    admin=request.user,
-                    amount=diff,
-                    reason="Manual admin adjustment"
-                )
-        super().save_model(request, obj, form, change)
 
 @admin.register(AttendanceRecord)
 class AttendanceRecordAdmin(admin.ModelAdmin):
-    list_display = ('user', 'date', 'event', 'overtime_hours', 'amount_paid', 'is_paid', 'admin_adjustment')
-    list_editable = ('is_paid', 'admin_adjustment')
-    search_fields = ('user__username', 'event')
+    list_display = ('user', 'date', 'get_event', 'overtime_hours', 'amount_paid', 'is_paid')
+    list_filter = ('date', 'is_paid', 'event_fk')
+    search_fields = ('user__username', 'event_fk__name')
+    readonly_fields = ('date',)
+    
+    def get_event(self, obj):
+        """Display event name from event_fk"""
+        return obj.event_fk.name if obj.event_fk else "No Event"
+    get_event.short_description = 'Event'
+
+
+@admin.register(Event)
+class EventAdmin(admin.ModelAdmin):
+    list_display = ('name', 'date', 'location', 'created_by', 'created_at')
+    search_fields = ('name', 'location', 'description')
+    list_filter = ('date', 'created_at')
+    readonly_fields = ('created_by', 'created_at', 'updated_at')
+    fields = ('name', 'date', 'location', 'description', 'created_by', 'created_at', 'updated_at')
 
     def save_model(self, request, obj, form, change):
-        """
-        When admin marks attendance as paid or changes admin_adjustment,
-        update the user's Profile balance automatically.
-        """
+        if not change:
+            obj.created_by = request.user
         super().save_model(request, obj, form, change)
 
-        # Update balance only after the record is saved
-        profile, _ = Profile.objects.get_or_create(user=obj.user)
 
-        if obj.is_paid:
-            # If admin marks as paid → reduce balance
-            profile.balance -= obj.amount_paid
-        else:
-            # Otherwise, adjust the balance with admin_adjustment if given
-            profile.balance += obj.admin_adjustment
+@admin.register(BalanceAdjustment)
+class BalanceAdjustmentAdmin(admin.ModelAdmin):
+    list_display = ('user', 'amount', 'reason', 'adjusted_by', 'date')
+    list_filter = ('date', 'user')
+    search_fields = ('user__username', 'reason')
+    readonly_fields = ('date',)
+    fields = ('user', 'amount', 'reason', 'adjusted_by', 'date')
 
-        # Ensure no negative balance
-        if profile.balance < 0:
-            profile.balance = 0
-
-        profile.save()
+    def save_model(self, request, obj, form, change):
+        if not obj.adjusted_by:
+            obj.adjusted_by = request.user
+        super().save_model(request, obj, form, change)

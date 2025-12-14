@@ -2,8 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from .models import Profile
-from .models import AttendanceRecord
+from .models import Profile, AttendanceRecord, Event
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField(required=True)
@@ -62,18 +61,26 @@ class UserRegisterForm(UserCreationForm):
         return user
 
 class AttendanceForm(forms.ModelForm):
+    event_fk = forms.ModelChoiceField(
+        queryset=Event.objects.all().order_by('-date'),
+        widget=forms.Select(attrs={
+            'class': 'form-control',
+            'required': 'required'
+        }),
+        label='Select Event',
+        help_text='Select the event you are attending',
+        required=False
+    )
+    
     class Meta:
         model = AttendanceRecord
-        fields = ['event', 'overtime_hours']  # ✅ ONLY these two fields
+        fields = ['event_fk', 'overtime_hours']
         widgets = {
-            'event': forms.TextInput(attrs={
-                'placeholder': 'Enter event/venue',
-                'required': 'required'
-            }),
             'overtime_hours': forms.NumberInput(attrs={
                 'placeholder': 'Overtime hours',
                 'min': '0',
-                'value': '0'
+                'value': '0',
+                'class': 'form-control'
             })
         }
 
@@ -83,3 +90,31 @@ class AttendanceForm(forms.ModelForm):
         if overtime < 0:
             raise forms.ValidationError("Overtime hours cannot be negative.")
         return cleaned_data
+
+
+class EventForm(forms.ModelForm):
+    """Form for creating and managing events"""
+    class Meta:
+        model = Event
+        fields = ['name', 'date', 'location', 'description']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'placeholder': 'Event name',
+                'class': 'form-control',
+                'required': 'required'
+            }),
+            'date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
+                'required': 'required'
+            }),
+            'location': forms.TextInput(attrs={
+                'placeholder': 'Event location/venue',
+                'class': 'form-control'
+            }),
+            'description': forms.Textarea(attrs={
+                'placeholder': 'Event details and notes',
+                'class': 'form-control',
+                'rows': 4
+            })
+        }

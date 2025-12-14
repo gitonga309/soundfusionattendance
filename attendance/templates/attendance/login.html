@@ -6,10 +6,10 @@
     <title>Login | Sound Fusion</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+<body class="bg-gray-50 flex items-center justify-center min-h-screen" style="background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);">
 
-    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
-        <h2 class="text-3xl font-bold text-center mb-6 text-blue-600">Welcome Back 👋</h2>
+    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md" style="border-top: 4px solid #2ecc71;">
+        <h2 class="text-3xl font-bold text-center mb-6" style="color: #0d2818;">Welcome Back 👋</h2>
         <form method="POST" class="space-y-4">
             {% csrf_token %}
             <div>
@@ -23,14 +23,14 @@
                     class="w-full mt-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none" />
             </div>
             <button type="submit"
-                class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                class="w-full text-white py-2 rounded-lg transition" style="background: #2ecc71; color: #0d2818; font-weight: 600;" onmouseover="this.style.background='#27ae60';" onmouseout="this.style.background='#2ecc71';">
                 Login
             </button>
         </form>
 
-        <p class="mt-4 text-center text-sm text-gray-600">
-            Don’t have an account?
-            <a href="{% url 'register' %}" class="text-blue-600 hover:underline">Sign up here</a>
+        <p class="mt-4 text-center text-sm" style="color: #666;">
+            Don't have an account?
+            <a href="{% url 'register' %}" style="color: #2ecc71; text-decoration: none; font-weight: 600;" onmouseover="this.style.textDecoration='underline';" onmouseout="this.style.textDecoration='none';">Sign up here</a>
         </p>
     </div>
 </body>

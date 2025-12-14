@@ -16,32 +16,34 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      background: linear-gradient(135deg, #0a192f, #1f4068);
-      color: #fff;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+      color: #333;
       padding: 20px;
     }
     .edit-container {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(12px);
+      background: #fff;
+      border-top: 4px solid #2ecc71;
       padding: 30px 25px;
       border-radius: 12px;
       width: 100%;
       max-width: 400px;
       text-align: center;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
     h2 {
       margin-bottom: 20px;
       font-size: 24px;
-      color: #00d4ff;
+      color: #0d2818;
     }
     .record-info {
-      background: rgba(0, 212, 255, 0.1);
+      background: rgba(46, 204, 113, 0.1);
       padding: 15px;
       border-radius: 8px;
       margin-bottom: 20px;
       font-size: 14px;
       text-align: left;
+      color: #0d2818;
+      border-left: 4px solid #2ecc71;
     }
     form {
       display: flex;
@@ -55,43 +57,64 @@
       display: block;
       margin-bottom: 5px;
       font-weight: bold;
-      color: #00d4ff;
+      color: #0d2818;
     }
     input {
       padding: 12px;
       border-radius: 8px;
-      border: 1px solid #00d4ff44;
+      border: 2px solid #2ecc71;
       outline: none;
       font-size: 14px;
-      background: rgba(255,255,255,0.1);
-      color: #fff;
+      background: #f8f9fa;
+      color: #333;
       transition: 0.3s;
       width: 100%;
     }
     input:focus {
-      border-color: #00d4ff;
-      background: rgba(255,255,255,0.15);
+      border-color: #0d2818;
+      background: #fff;
+      box-shadow: 0 0 5px rgba(46, 204, 113, 0.3);
     }
     button {
       padding: 12px;
       border-radius: 8px;
       border: none;
-      background-color: #00d4ff;
-      color: #0a192f;
+      background-color: #2ecc71;
+      color: #0d2818;
       font-weight: bold;
       cursor: pointer;
       transition: 0.3s;
       margin-top: 5px;
+      width: 100%;
+      font-size: 14px;
+    }
+    select {
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #2ecc71;
+      outline: none;
+      font-size: 14px;
+      background: #f8f9fa;
+      color: #333;
+      transition: 0.3s;
+      width: 100%;
+      cursor: pointer;
+    }
+    select:focus {
+      border-color: #0d2818;
+      background: #fff;
+      box-shadow: 0 0 5px rgba(46, 204, 113, 0.3);
     }
     button:hover {
-      background-color: #00a9cc;
+      background-color: #27ae60;
     }
     .back-link {
       margin-top: 15px;
       font-size: 14px;
+      color: #666;
     }
     .back-link a {
-      color: #00d4ff;
+      color: #2ecc71;
       text-decoration: none;
       font-weight: bold;
     }
@@ -115,10 +138,15 @@
       {% csrf_token %}
       
       <div class="form-group">
-        <label for="event">Event/Venue:</label>
-        <input type="text" name="event" id="event" 
-               value="{{ record.event|default:'' }}" 
-               placeholder="Enter event or venue name" required>
+        <label for="event_fk">Event/Venue:</label>
+        <select name="event_fk" id="event_fk" required>
+          <option value="">-- Select an Event --</option>
+          {% for event in events %}
+            <option value="{{ event.id }}" {% if record.event_fk.id == event.id %}selected{% endif %}>
+              {{ event.name }} ({{ event.date|date:"M d, Y" }})
+            </option>
+          {% endfor %}
+        </select>
       </div>
 
       <div class="form-group">
@@ -133,6 +161,8 @@
     
     <div class="back-link">
       <a href="{% url 'view_attendance' %}">Back to Attendance Records</a>
+      &nbsp;|&nbsp;
+      <a href="{% url 'logout' %}">Logout</a>
     </div>
   </div>
 </body>

@@ -115,8 +115,32 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# Media files (User uploads)
+MEDIA_URL = 'media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Caching Configuration for better performance
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'sound-fusion-cache',
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000
+        }
+    }
+}
+
+# Cache timeout (1 hour)
+CACHE_TIMEOUT = 3600
+
+# Database optimization
+DATABASES['default']['CONN_MAX_AGE'] = 600  # Connection pooling
+DATABASES['default']['OPTIONS'] = {
+    'timeout': 20,
+}
 
 # Security settings for production
 if not DEBUG:
