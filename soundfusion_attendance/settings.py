@@ -13,14 +13,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-3&!7*&s4o=$9j6_d4tq)geg#%%6wh*xmc5%l&yi2*nrci89mm3')
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# ALLOWED_HOSTS for Railway & local development
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
-# Render.com deployment - will be set in production
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+# Railway.app deployment
+RAILWAY_DOMAIN = os.environ.get('RAILWAY_DOMAIN')
+if RAILWAY_DOMAIN:
+    ALLOWED_HOSTS.append(RAILWAY_DOMAIN)
+    ALLOWED_HOSTS.append(f"*.{RAILWAY_DOMAIN}")
+
+# Custom domain support
+CUSTOM_DOMAIN = os.environ.get('CUSTOM_DOMAIN')
+if CUSTOM_DOMAIN:
+    ALLOWED_HOSTS.append(CUSTOM_DOMAIN)
 
 
 # Application definition
