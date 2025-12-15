@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
-from .forms import UserRegisterForm, AttendanceForm
+from .forms import UserRegisterForm, AttendanceForm, EventForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -196,12 +196,11 @@ def admin_dashboard(request):
             if adjustment_amount:
                 try:
                     adjustment_amount = float(adjustment_amount)
-                    profile = Profile.objects.get(user=user)
                     
                     # Create BalanceAdjustment record
                     BalanceAdjustment.objects.create(
-                        profile=profile,
-                        admin=request.user,
+                        user=user,
+                        adjusted_by=request.user,
                         amount=adjustment_amount,
                         reason=request.POST.get(f'reason_{user_id}', 'Admin adjustment')
                     )
@@ -228,7 +227,7 @@ def admin_dashboard(request):
             
         # Use select_related for event_fk to reduce queries
         latest_record = AttendanceRecord.objects.filter(user=user).select_related('event_fk').order_by('-date').first()
-        recent_adjustments = BalanceAdjustment.objects.filter(profile=profile).select_related('admin').order_by('-date')[:5]
+        recent_adjustments = BalanceAdjustment.objects.filter(user=user).select_related('adjusted_by').order_by('-date')[:5]
         
         user_data.append({
             'user': user,
@@ -242,7 +241,6 @@ def admin_dashboard(request):
         'user_data': user_data
     }
     return render(request, 'attendance/admin_dashboard.html', context)
-
 
 @user_passes_test(is_admin)
 def manage_balances(request):
@@ -258,12 +256,11 @@ def manage_balances(request):
             if adjustment_amount:
                 try:
                     adjustment_amount = float(adjustment_amount)
-                    profile = Profile.objects.get(user=user)
                     
-                    # Create BalanceAdjustment record
+                    # Create BalanceAdjustment record with correct field names
                     BalanceAdjustment.objects.create(
-                        profile=profile,
-                        admin=request.user,
+                        user=user,
+                        adjusted_by=request.user,
                         amount=adjustment_amount,
                         reason=reason
                     )
@@ -313,16 +310,10 @@ def user_logout(request):
 
 # ========== EVENT & EQUIPMENT MANAGEMENT ==========
 
-def is_admin(user):
-    """Check if user is admin or staff"""
-    return user.is_staff or user.is_superuser
-
-
 @login_required
 @user_passes_test(is_admin)
 def events_list(request):
     """List all events"""
-    from .models import Event
     events = Event.objects.select_related('created_by').prefetch_related('equipment_set').order_by('-created_at')
     context = {'events': events}
     return render(request, 'attendance/events_list.html', context)
@@ -332,7 +323,6 @@ def events_list(request):
 @user_passes_test(is_admin)
 def event_create(request):
     """Create a new event"""
-    from .forms import EventForm
     if request.method == 'POST':
         form = EventForm(request.POST)
         if form.is_valid():
@@ -351,16 +341,11 @@ def event_create(request):
 @login_required
 @user_passes_test(is_admin)
 def event_detail(request, pk):
-    """View event details and manage equipment"""
-    from .models import Event, Equipment
+    """View event details"""
     event = get_object_or_404(Event, pk=pk)
-    # Optimize equipment query with select_related
-    equipment = Equipment.objects.filter(event=event).select_related('recorded_by').order_by('-recorded_at')
     
     context = {
         'event': event,
-        'equipment_list': equipment,
-        'equipment_count': equipment.count()
     }
     return render(request, 'attendance/event_detail.html', context)
 
@@ -369,8 +354,6 @@ def event_detail(request, pk):
 @user_passes_test(is_admin)
 def event_edit(request, pk):
     """Edit an existing event"""
-    from .forms import EventForm
-    from .models import Event
     event = get_object_or_404(Event, pk=pk)
     
     if request.method == 'POST':
@@ -390,7 +373,6 @@ def event_edit(request, pk):
 @user_passes_test(is_admin)
 def event_delete(request, pk):
     """Delete an event"""
-    from .models import Event
     event = get_object_or_404(Event, pk=pk)
     
     if request.method == 'POST':
@@ -402,77 +384,4 @@ def event_delete(request, pk):
     context = {'event': event}
     return render(request, 'attendance/event_confirm_delete.html', context)
 
-
-@login_required
-@user_passes_test(is_admin)
-def equipment_add(request, event_pk):
-    """Add equipment to an event"""
-    from .forms import EquipmentForm
-    from .models import Event
-    event = get_object_or_404(Event, pk=event_pk)
-    
-    if request.method == 'POST':
-        form = EquipmentForm(request.POST)
-        if form.is_valid():
-            equipment = form.save(commit=False)
-            equipment.event = event
-            equipment.recorded_by = request.user
-            equipment.save()
-            messages.success(request, "Equipment added successfully!")
-            return redirect('event_detail', pk=event.id)
-    else:
-        form = EquipmentForm()
-    
-    context = {
-        'form': form,
-        'event': event,
-        'title': f'Add Equipment to {event.name}'
-    }
-    return render(request, 'attendance/equipment_form.html', context)
-
-
-@login_required
-@user_passes_test(is_admin)
-def equipment_edit(request, pk):
-    """Edit equipment details"""
-    from .forms import EquipmentForm
-    from .models import Equipment
-    equipment = get_object_or_404(Equipment, pk=pk)
-    event = equipment.event
-    
-    if request.method == 'POST':
-        form = EquipmentForm(request.POST, instance=equipment)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Equipment updated successfully!")
-            return redirect('event_detail', pk=event.id)
-    else:
-        form = EquipmentForm(instance=equipment)
-    
-    context = {
-        'form': form,
-        'equipment': equipment,
-        'event': event,
-        'title': 'Edit Equipment'
-    }
-    return render(request, 'attendance/equipment_form.html', context)
-
-
-@login_required
-@user_passes_test(is_admin)
-def equipment_delete(request, pk):
-    """Delete equipment from an event"""
-    from .models import Equipment
-    equipment = get_object_or_404(Equipment, pk=pk)
-    event = equipment.event
-    
-    if request.method == 'POST':
-        equipment.delete()
-        messages.success(request, "Equipment deleted successfully!")
-        return redirect('event_detail', pk=event.id)
-    
-    context = {
-        'equipment': equipment,
-        'event': event
-    }
-    return render(request, 'attendance/equipment_confirm_delete.html', context)
+# Equipment management removed - not fully implemented

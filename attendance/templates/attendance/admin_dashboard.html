@@ -468,7 +468,7 @@
                 </div>
                 <div class="stat-card">
                     <h3>Total Balance Owed</h3>
-                    <div class="value">KSH {% for item in user_data %}{{ item.total_balance|add:0 }}{% endfor %}</div>
+                    <div class="value">KSH 0</div>
                 </div>
             </div>
 
@@ -625,7 +625,7 @@
                                             <strong>Reason: </strong>{{ adjustment.reason|default:"No reason provided" }}
                                         </div>
                                         <small>
-                                            Made by: {{ adjustment.admin.username|default:"System" }} | 
+                                            Made by: {{ adjustment.adjusted_by.username|default:"System" }} | 
                                             {{ adjustment.date|date:"M d, Y - h:i A" }}
                                         </small>
                                     </div>

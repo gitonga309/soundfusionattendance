@@ -20,9 +20,4 @@ urlpatterns = [
     path('events/<int:pk>/', views.event_detail, name='event_detail'),
     path('events/<int:pk>/edit/', views.event_edit, name='event_edit'),
     path('events/<int:pk>/delete/', views.event_delete, name='event_delete'),
-    
-    # Equipment Management URLs
-    path('events/<int:event_pk>/equipment/add/', views.equipment_add, name='equipment_add'),
-    path('equipment/<int:pk>/edit/', views.equipment_edit, name='equipment_edit'),
-    path('equipment/<int:pk>/delete/', views.equipment_delete, name='equipment_delete'),
 ]
