@@ -22,7 +22,7 @@ RUNNING_DEV_SERVER = 'runserver' in sys.argv
 DEBUG = os.environ.get('DEBUG', 'True') == 'True' or RUNNING_DEV_SERVER
 
 # ALLOWED_HOSTS for Railway & Heroku & local development
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0','sound-fusion-attendance.onrender.com']
 
 # Railway.app deployment
 RAILWAY_DOMAIN = os.environ.get('RAILWAY_DOMAIN')
