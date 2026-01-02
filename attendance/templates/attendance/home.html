@@ -533,7 +533,7 @@
     <!-- NAVIGATION -->
     <nav class="navbar">
         <div class="navbar-content">
-            <a href="#" class="logo">
+            <a href="https://www.soundfusion.co.ke/" class="logo">
                 <img src="{% static 'images/sfl logo.jpg' %}" alt="Sound Fusion Logo" style="height: 40px; width: auto;">
                 Sound Fusion
             </a>
@@ -553,7 +553,7 @@
     <section class="hero">
         <div class="hero-content">
             <h1>Manage Your Team's <span class="hero-highlight">Attendance</span> Effortlessly</h1>
-            <p>Sound Fusion Attendance is the smart solution for event companies to track workforce attendance, manage payments, and optimize operations in real-time.</p>
+            <p>Sound Fusion Attendance is the smart solution for  event companies  to track workforce attendance, manage payments, and optimize operations in real-time.</p>
             <div class="hero-buttons">
                 <a href="{% url 'register' %}" class="btn-primary">Get Started Free</a>
                 <a href="#features" class="btn-secondary">Learn More</a>
@@ -663,7 +663,7 @@
         <div class="about-content">
             <div class="about-text">
                 <h2>Designed for Event Companies</h2>
-                <p>Sound Fusion Attendance was built specifically for the event industry's unique workforce management needs. We understand the challenges of tracking temporary staff, managing varied working hours, and ensuring accurate payments.</p>
+                <p>Sound Fusion Attendance was built specifically for the event industry's unique workforce management needs. We understand the challenges of tracking staff, managing varied working hours, and ensuring accurate payments.</p>
                 <p>Our system simplifies the entire process from attendance tracking to payment management, saving your team time and reducing errors.</p>
                 <p>Whether you're organizing weddings, conferences, corporate events, or festivals, Sound Fusion helps you manage your workforce professionally.</p>
             </div>
@@ -676,19 +676,15 @@
 
     <!-- CTA SECTION -->
     <section class="cta">
-        <h2>Ready to Transform Your Workforce Management?</h2>
-        <p>Join event companies that trust Sound Fusion for accurate attendance tracking and payment management.</p>
+        <h2>Ready to Start Tracking Your records ?</h2>
+        <p>Login below or sign up if you do not have an account </p>
         <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
             <a href="{% url 'register' %}" class="btn-primary">Start Free Today</a>
             <a href="{% url 'login' %}" class="btn-primary" style="background: #27ae60;">Login</a>
         </div>
     </section>
 
-    <!-- FOOTER -->
-    <footer class="footer">
-        <p>&copy; 2025 Sound Fusion Attendance System. All rights reserved.</p>
-        <p>Built for professional event companies managing temporary workforce.</p>
-    </footer>
+   
 
     <script>
         // Smooth scroll enhancement
@@ -727,83 +723,11 @@
 </body>
 </html>
             
-            <!-- Logo Upload Field -->
-            <div style="margin-bottom: 2.5rem;">
-                <h3 style="color: #0d2818; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-image" style="color: #2ecc71;"></i> Company Logo
-                </h3>
-                <p style="color: #666; font-size: 0.95rem; margin-bottom: 1rem;">Upload your company logo to display in the system header and documents</p>
-                
-                <div style="border: 2px dashed #2ecc71; border-radius: 8px; padding: 2rem; text-align: center; background: rgba(46, 204, 113, 0.05); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.borderColor='#0d2818'; this.style.background='rgba(46, 204, 113, 0.1)';" onmouseout="this.style.borderColor='#2ecc71'; this.style.background='rgba(46, 204, 113, 0.05)';">
-                    <input type="file" id="logo-input" accept="image/*" style="display: none;" onchange="handleLogoUpload(event)">
-                    <label for="logo-input" style="cursor: pointer;">
-                        <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #2ecc71; margin-bottom: 0.5rem; display: block;"></i>
-                        <p style="color: #333; font-weight: 600; margin: 0;">Click to upload logo</p>
-                        <p style="color: #999; font-size: 0.9rem; margin: 0.5rem 0 0 0;">PNG, JPG, SVG (Max 2MB)</p>
-                    </label>
-                </div>
-                <div id="logo-preview" style="margin-top: 1rem; display: none;">
-                    <p style="color: #0d2818; font-weight: 600; margin-bottom: 0.5rem;">✓ Logo Ready</p>
-                    <img id="logo-image" style="max-width: 200px; height: auto; border-radius: 8px;">
-                </div>
-            </div>
-
-            <!-- Banner Image Upload Field -->
-            <div style="margin-bottom: 2.5rem; border-top: 1px solid #eee; padding-top: 2rem;">
-                <h3 style="color: #0d2818; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-images" style="color: #2ecc71;"></i> Hero Banner Image
-                </h3>
-                <p style="color: #666; font-size: 0.95rem; margin-bottom: 1rem;">Upload a hero banner image for the landing page (recommended: 1920x600px)</p>
-                
-                <div style="border: 2px dashed #2ecc71; border-radius: 8px; padding: 2rem; text-align: center; background: rgba(46, 204, 113, 0.05); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.borderColor='#0d2818'; this.style.background='rgba(46, 204, 113, 0.1)';" onmouseout="this.style.borderColor='#2ecc71'; this.style.background='rgba(46, 204, 113, 0.05)';">
-                    <input type="file" id="banner-input" accept="image/*" style="display: none;" onchange="handleBannerUpload(event)">
-                    <label for="banner-input" style="cursor: pointer;">
-                        <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #0d0f0e; margin-bottom: 0.5rem; display: block;"></i>
-                        <p style="color: #333; font-weight: 600; margin: 0;">Click to upload banner</p>
-                        <p style="color: #999; font-size: 0.9rem; margin: 0.5rem 0 0 0;">PNG, JPG (Max 5MB)</p>
-                    </label>
-                </div>
-                <div id="banner-preview" style="margin-top: 1rem; display: none;">
-                    <p style="color: #0d2818; font-weight: 600; margin-bottom: 0.5rem;">✓ Banner Ready</p>
-                    <img id="banner-image" style="max-width: 100%; height: auto; border-radius: 8px; max-height: 300px;">
-                </div>
-            </div>
-
-            <!-- Company Images Upload Field -->
-            <div style="border-top: 1px solid #eee; padding-top: 2rem;">
-                <h3 style="color: #0d2818; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-photo-video" style="color: #2ecc71;"></i> Gallery Images
-                </h3>
-                <p style="color: #666; font-size: 0.95rem; margin-bottom: 1rem;">Upload event photos and company images for the gallery section</p>
-                
-                <div style="border: 2px dashed #2ecc71; border-radius: 8px; padding: 2rem; text-align: center; background: rgba(46, 204, 113, 0.05); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.borderColor='#0d2818'; this.style.background='rgba(46, 204, 113, 0.1)';" onmouseout="this.style.borderColor='#2ecc71'; this.style.background='rgba(46, 204, 113, 0.05)';">
-                    <input type="file" id="gallery-input" accept="image/*" multiple style="display: none;" onchange="handleGalleryUpload(event)">
-                    <label for="gallery-input" style="cursor: pointer;">
-                        <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #2ecc71; margin-bottom: 0.5rem; display: block;"></i>
-                        <p style="color: #333; font-weight: 600; margin: 0;">Click to upload images</p>
-                        <p style="color: #999; font-size: 0.9rem; margin: 0.5rem 0 0 0;">PNG, JPG (Max 10 files, 5MB each)</p>
-                    </label>
-                </div>
-                <div id="gallery-preview" style="margin-top: 1rem; display: none;">
-                    <p style="color: #0d2818; font-weight: 600; margin-bottom: 1rem;"><span id="gallery-count"></span> images ready</p>
-                    <div id="gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem;"></div>
-                </div>
-            </div>
-
-            <!-- Info Box -->
-            <div style="margin-top: 2rem; background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 1rem; border-radius: 6px;">
-                <p style="color: #0d2818; margin: 0; font-weight: 600;">
-                    <i class="fas fa-info-circle" style="color: #2ecc71; margin-right: 0.5rem;"></i>
-                    Your images will be saved and displayed throughout the application
-                </p>
-            </div>
-
-        </div>
     </section>
 
     <!-- FOOTER -->
     <footer class="footer">
-        <p>&copy; 2025 Sound Fusion Attendance System. All rights reserved.</p>
+        <p>&copy; 2026 Sound Fusion Attendance System. All rights reserved.</p>
         <p>Built for professional event companies managing temporary workforce.</p>
     </footer>
 

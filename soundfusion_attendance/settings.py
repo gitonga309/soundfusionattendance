@@ -2,9 +2,9 @@
 Django settings for soundfusion_attendance project.
 """
 
-
 import os
-import dj_database_url  # MAKE SURE THIS IMPORT IS AT TOP
+import sys
+import dj_database_url
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -13,7 +13,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-3&!7*&s4o=$9j6_d4tq)geg#%%6wh*xmc5%l&yi2*nrci89mm3')
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+# Better DEBUG handling - default to True for local development
+# Check if running development server
+RUNNING_DEV_SERVER = 'runserver' in sys.argv
+
+# Set DEBUG: from environment variable, or True if running dev server
+DEBUG = os.environ.get('DEBUG', 'True') == 'True' or RUNNING_DEV_SERVER
 
 # ALLOWED_HOSTS for Railway & Heroku & local development
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
@@ -79,11 +85,6 @@ WSGI_APPLICATION = 'soundfusion_attendance.wsgi.application'
 
 
 # Database Configuration
-# Use MySQL for local development, PostgreSQL for production on Render
-# Database Configuration - Force PostgreSQL on Render
-# Database Configuration
-import dj_database_url
-
 # Default database (will be overridden by DATABASE_URL on Render)
 DATABASES = {
     'default': {
@@ -98,6 +99,7 @@ if os.environ.get('DATABASE_URL'):
         conn_max_age=600,
         ssl_require=True
     )
+
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -123,12 +125,12 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files (User uploads)
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
@@ -151,11 +153,27 @@ CACHE_TIMEOUT = 3600
 # Database optimization
 DATABASES['default']['CONN_MAX_AGE'] = 600  # Connection pooling
 DATABASES['default']['OPTIONS'] = {
-    'timeout': 20,
+    'connect_timeout': 20,
 }
 
-# Security settings for production
-if not DEBUG:
+# Security settings - only enforce HTTPS in production
+# For development/local, explicitly set these to False
+if DEBUG:
+    # Development settings
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+else:
+    # Production settings
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    
+# Additional security headers for production
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
