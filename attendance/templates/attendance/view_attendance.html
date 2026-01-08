@@ -207,7 +207,11 @@
           <td>{{ record.date }}</td>
           <td><span class="badge">Attendance</span></td>
           <td>
-            <strong>{{ record.event_fk.name|default:"No Event" }}</strong><br>
+            {% if record.event_fk %}
+              <strong><a href="{% url 'event_detail' record.event_fk.id %}" style="color: #2ecc71; text-decoration: none; font-weight: bold;">{{ record.event_fk.name }}</a></strong><br>
+            {% else %}
+              <strong style="color: #999;">No Event</strong><br>
+            {% endif %}
             <small>Check-in: {{ record.check_in_time }} | OT: {{ record.overtime_hours }} hrs</small>
           </td>
           <td><strong>+KSH {{ record.amount_paid }}</strong></td>

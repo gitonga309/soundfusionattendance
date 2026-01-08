@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
-from .forms import UserRegisterForm, AttendanceForm, EventForm
+from .forms import UserRegisterForm, AttendanceForm, EventForm, ExpenseReimbursementForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from .models import AttendanceRecord, Profile, Event, BalanceAdjustment
+from .models import AttendanceRecord, Profile, Event, BalanceAdjustment, ExpenseReimbursement
 from django.utils import timezone
 from django.db.models import Sum
 
@@ -318,14 +318,39 @@ def user_logout(request):
     return render(request, 'attendance/logout.html')
 
 
+@login_required
+def my_assignments(request):
+    """Show events the current user is assigned to (setup crew or event crew)"""
+    user = request.user
+    
+    # Get events where user is in setup_crew
+    setup_assignments = Event.objects.filter(setup_crew=user).order_by('setup_date')
+    
+    # Get events where user is in event_crew
+    event_assignments = Event.objects.filter(event_crew=user).order_by('date')
+    
+    context = {
+        'setup_assignments': setup_assignments,
+        'event_assignments': event_assignments,
+        'setup_count': setup_assignments.count(),
+        'event_count': event_assignments.count(),
+        'all_count': setup_assignments.count() + event_assignments.count(),
+    }
+    
+    return render(request, 'attendance/my_assignments.html', context)
+
+
 # ========== EVENT & EQUIPMENT MANAGEMENT ==========
 
 @login_required
-@user_passes_test(is_admin)
 def events_list(request):
-    """List all events"""
-    events = Event.objects.select_related('created_by').prefetch_related('equipment_set').order_by('-created_at')
-    context = {'events': events}
+    """List all events for today - accessible to all logged-in users"""
+    today = timezone.now().date()
+    events = Event.objects.filter(date=today).select_related('created_by').order_by('-date')
+    context = {
+        'events': events,
+        'date': today
+    }
     return render(request, 'attendance/events_list.html', context)
 
 
@@ -349,9 +374,8 @@ def event_create(request):
 
 
 @login_required
-@user_passes_test(is_admin)
 def event_detail(request, pk):
-    """View event details"""
+    """View event details - accessible to all logged-in users"""
     event = get_object_or_404(Event, pk=pk)
     
     context = {
@@ -395,3 +419,93 @@ def event_delete(request, pk):
     return render(request, 'attendance/event_confirm_delete.html', context)
 
 # Equipment management removed - not fully implemented
+
+
+# ========== EXPENSE REIMBURSEMENT ==========
+
+@login_required
+def submit_reimbursement(request):
+    """Allow users to submit expense reimbursement requests"""
+    if request.method == 'POST':
+        form = ExpenseReimbursementForm(request.POST, request.FILES)
+        if form.is_valid():
+            reimbursement = form.save(commit=False)
+            reimbursement.user = request.user
+            reimbursement.save()
+            messages.success(request, "Reimbursement request submitted! Awaiting admin approval.")
+            return redirect('view_reimbursements')
+    else:
+        form = ExpenseReimbursementForm()
+    
+    context = {'form': form}
+    return render(request, 'attendance/submit_reimbursement.html', context)
+
+
+@login_required
+def view_reimbursements(request):
+    """Allow users to view their reimbursement requests"""
+    user = request.user
+    reimbursements = ExpenseReimbursement.objects.filter(user=user).order_by('-requested_at')
+    
+    context = {
+        'reimbursements': reimbursements,
+    }
+    return render(request, 'attendance/view_reimbursements.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_reimbursements(request):
+    """Admin dashboard to review and approve/reject reimbursements"""
+    # Get pending reimbursements
+    pending_reimbursements = ExpenseReimbursement.objects.filter(status='pending').select_related('user', 'event').order_by('-requested_at')
+    approved_reimbursements = ExpenseReimbursement.objects.filter(status='approved').select_related('user', 'event').order_by('-approved_at')
+    rejected_reimbursements = ExpenseReimbursement.objects.filter(status='rejected').select_related('user', 'event').order_by('-requested_at')
+    
+    context = {
+        'pending_reimbursements': pending_reimbursements,
+        'approved_reimbursements': approved_reimbursements,
+        'rejected_reimbursements': rejected_reimbursements,
+        'pending_count': pending_reimbursements.count(),
+        'approved_count': approved_reimbursements.count(),
+        'rejected_count': rejected_reimbursements.count(),
+    }
+    return render(request, 'attendance/admin_reimbursements.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def approve_reimbursement(request, reimbursement_id):
+    """Approve a reimbursement request"""
+    reimbursement = get_object_or_404(ExpenseReimbursement, pk=reimbursement_id)
+    
+    if request.method == 'POST':
+        reimbursement.status = 'approved'
+        reimbursement.approved_by = request.user
+        reimbursement.approved_at = timezone.now()
+        reimbursement.save()
+        
+        messages.success(request, f"Reimbursement for {reimbursement.user.username} approved! Balance updated.")
+        return redirect('admin_reimbursements')
+    
+    context = {'reimbursement': reimbursement}
+    return render(request, 'attendance/reimbursement_action.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def reject_reimbursement(request, reimbursement_id):
+    """Reject a reimbursement request"""
+    reimbursement = get_object_or_404(ExpenseReimbursement, pk=reimbursement_id)
+    
+    if request.method == 'POST':
+        rejection_reason = request.POST.get('rejection_reason', '')
+        reimbursement.status = 'rejected'
+        reimbursement.rejection_reason = rejection_reason
+        reimbursement.save()
+        
+        messages.success(request, f"Reimbursement for {reimbursement.user.username} rejected.")
+        return redirect('admin_reimbursements')
+    
+    context = {'reimbursement': reimbursement, 'action': 'reject'}
+    return render(request, 'attendance/reject_reimbursement.html', context)

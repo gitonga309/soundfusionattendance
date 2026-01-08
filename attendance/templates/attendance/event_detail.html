@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load custom_filters %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ event.name }} | Sound Fusion</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .navbar {
+      background: linear-gradient(135deg, #0d2818 0%, #000 100%);
+      padding: 1.2rem 2rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .navbar h1 {
+      color: #2ecc71;
+      font-size: 1.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-weight: 700;
+    }
+
+    .navbar a {
+      color: #fff;
+      text-decoration: none;
+      padding: 0.7rem 1.5rem;
+      background: #2ecc71;
+      border-radius: 6px;
+      transition: all 0.3s;
+      font-weight: 600;
+    }
+
+    .navbar a:hover {
+      background: #27ae60;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    .event-header {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+      border-left: 5px solid #2ecc71;
+    }
+
+    .event-header h1 {
+      color: #0d2818;
+      margin-bottom: 0.5rem;
+      font-size: 2.2rem;
+    }
+
+    .event-date {
+      color: #666;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .event-date i {
+      color: #2ecc71;
+      margin-right: 0.5rem;
+    }
+
+    .event-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .detail-card {
+      background: #fff;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .detail-card h3 {
+      color: #0d2818;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .detail-card h3 i {
+      color: #2ecc71;
+      font-size: 1.3rem;
+    }
+
+    .detail-card p {
+      color: #555;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .detail-value {
+      color: #0d2818;
+      font-weight: 600;
+      margin-top: 0.5rem;
+    }
+
+    .equipment-list {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+
+    .equipment-list h2 {
+      color: #0d2818;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      border-bottom: 3px solid #2ecc71;
+      padding-bottom: 0.8rem;
+    }
+
+    .equipment-list h2 i {
+      color: #2ecc71;
+    }
+
+    .equipment-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .equipment-item {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid #2ecc71;
+      color: #0d2818;
+      font-weight: 500;
+    }
+
+    .no-equipment {
+      text-align: center;
+      padding: 2rem;
+      color: #999;
+    }
+
+    .no-equipment i {
+      font-size: 2rem;
+      margin-bottom: 0.8rem;
+      color: #ccc;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 2rem;
+      color: #2ecc71;
+      text-decoration: none;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s;
+    }
+
+    .back-link:hover {
+      gap: 0.8rem;
+    }
+
+    .back-link i {
+      transition: transform 0.3s;
+    }
+
+    .back-link:hover i {
+      transform: translateX(-3px);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .btn-primary {
+      background: #2ecc71;
+      color: #0d2818;
+    }
+
+    .btn-primary:hover {
+      background: #27ae60;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+    }
+
+    .btn-secondary {
+      background: #666;
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: #555;
+      transform: translateY(-2px);
+    }
+
+    .empty-description {
+      color: #999;
+      font-style: italic;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 0 1rem;
+      }
+
+      .event-header h1 {
+        font-size: 1.6rem;
+      }
+
+      .event-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+
+      .btn {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <h1>
+      <i class="fas fa-calendar-alt"></i>
+      Event Details
+    </h1>
+    <div>
+      <a href="{% url 'dashboard' %}"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <a href="{% url 'events_list' %}" class="back-link">
+      <i class="fas fa-chevron-left"></i> Back to Events
+    </a>
+
+    <div class="event-header">
+      <h1><i class="fas fa-calendar-check"></i> {{ event.name }}</h1>
+      <div class="event-date">
+        <i class="fas fa-calendar-days"></i>
+        <strong>Event Date:</strong> {{ event.date|date:"l, F j, Y" }}
+      </div>
+    </div>
+
+    <div class="event-grid">
+      {% if event.location %}
+      <div class="detail-card">
+        <h3><i class="fas fa-map-marker-alt"></i> Location</h3>
+        <p class="detail-value">{{ event.location }}</p>
+      </div>
+      {% endif %}
+
+      {% if event.client_venue %}
+      <div class="detail-card">
+        <h3><i class="fas fa-building"></i> Client Venue</h3>
+        <p class="detail-value">{{ event.client_venue }}</p>
+      </div>
+      {% endif %}
+
+      {% if event.setup_date %}
+      <div class="detail-card">
+        <h3><i class="fas fa-hammer"></i> Setup Date</h3>
+        <p class="detail-value">{{ event.setup_date|date:"M j, Y" }}</p>
+      </div>
+      {% endif %}
+
+      {% if event.setup_end_date %}
+      <div class="detail-card">
+        <h3><i class="fas fa-check-circle"></i> Set Down Date</h3>
+        <p class="detail-value">{{ event.setup_end_date|date:"M j, Y" }}</p>
+      </div>
+      {% endif %}
+
+      {% if event.created_by %}
+      <div class="detail-card">
+        <h3><i class="fas fa-user"></i> Created By</h3>
+        <p class="detail-value">{{ event.created_by.get_full_name|default:event.created_by.username }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if event.description %}
+    <div style="background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+      <h2 style="color: #0d2818; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.8rem;">
+        <i class="fas fa-file-alt" style="color: #2ecc71;"></i>
+        Description
+      </h2>
+      <p style="color: #555; line-height: 1.8;">{{ event.description }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Crew Assignments Section -->
+    <div style="background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+        <!-- Setup Crew -->
+        <div>
+          <h3 style="color: #0d2818; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.8rem;">
+            <i class="fas fa-wrench" style="color: #ff9800;"></i>
+            Setup Crew
+          </h3>
+          {% if event.setup_crew.all %}
+            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+              {% for user in event.setup_crew.all %}
+                <div style="background: #fff8e1; padding: 0.8rem; border-radius: 6px; border-left: 4px solid #ff9800; display: flex; align-items: center; gap: 0.6rem;">
+                  <i class="fas fa-user-circle" style="color: #ff9800; font-size: 1.2rem;"></i>
+                  <span style="color: #333; font-weight: 600;">{{ user.get_full_name|default:user.username }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p style="color: #999; font-style: italic;">
+              <i class="fas fa-info-circle"></i> No setup crew assigned
+            </p>
+          {% endif %}
+          {% if event.setup_date %}
+          <p style="color: #666; font-size: 0.9rem; margin-top: 0.8rem;">
+            <i class="fas fa-calendar"></i> Starts: {{ event.setup_date|date:"M j, Y" }}
+          </p>
+          {% endif %}
+        </div>
+
+        <!-- Event Crew -->
+        <div>
+          <h3 style="color: #0d2818; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.8rem;">
+            <i class="fas fa-star" style="color: #2ecc71;"></i>
+            Event Day Crew
+          </h3>
+          {% if event.event_crew.all %}
+            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+              {% for user in event.event_crew.all %}
+                <div style="background: #f0fdf4; padding: 0.8rem; border-radius: 6px; border-left: 4px solid #2ecc71; display: flex; align-items: center; gap: 0.6rem;">
+                  <i class="fas fa-user-circle" style="color: #2ecc71; font-size: 1.2rem;"></i>
+                  <span style="color: #333; font-weight: 600;">{{ user.get_full_name|default:user.username }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p style="color: #999; font-style: italic;">
+              <i class="fas fa-info-circle"></i> No event crew assigned
+            </p>
+          {% endif %}
+          {% if event.date %}
+          <p style="color: #666; font-size: 0.9rem; margin-top: 0.8rem;">
+            <i class="fas fa-calendar"></i> Event: {{ event.date|date:"M j, Y" }}
+          </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="equipment-list">
+      <h2>
+        <i class="fas fa-microchip"></i>
+        Equipments Delivered
+      </h2>
+      {% if event.equipments_delivered %}
+        <div class="equipment-items">
+          {% for equipment in event.equipments_delivered|split_lines %}
+            <div class="equipment-item">
+              <i class="fas fa-check"></i> {{ equipment }}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="no-equipment">
+          <i class="fas fa-inbox"></i>
+          <p>No equipments recorded for this event yet.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if user.is_superuser %}
+    <div class="action-buttons">
+      <a href="{% url 'event_edit' event.id %}" class="btn btn-primary">
+        <i class="fas fa-edit"></i> Edit Event
+      </a>
+      <a href="{% url 'event_delete' event.id %}" class="btn btn-secondary">
+        <i class="fas fa-trash"></i> Delete Event
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>

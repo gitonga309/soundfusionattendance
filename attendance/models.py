@@ -88,6 +88,21 @@ class Event(models.Model):
     setup_date = models.DateField(null=True, blank=True, help_text="Date when setup starts")
     setup_end_date = models.DateField(null=True, blank=True, help_text="Date when setup is complete / Event ends")
     equipments_delivered = models.TextField(blank=True, help_text="List of equipments delivered to this event")
+    
+    # User assignments for event work
+    setup_crew = models.ManyToManyField(
+        User, 
+        blank=True, 
+        related_name='setup_events',
+        help_text="Select users assigned to setup/teardown work"
+    )
+    event_crew = models.ManyToManyField(
+        User, 
+        blank=True, 
+        related_name='event_day_events',
+        help_text="Select users assigned for event day work"
+    )
+    
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_events')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -134,3 +149,64 @@ def update_balance_on_adjustment(sender, instance, **kwargs):
     # Final balance = attendance payments + adjustments
     profile.balance = total_attendance + total_adjustments
     profile.save()
+
+
+class ExpenseReimbursement(models.Model):
+    """Model for tracking expense reimbursement requests from users"""
+    EXPENSE_TYPES = (
+        ('transport', 'Transport (Uber/Bolt)'),
+        ('purchase', 'Purchase (Equipment/Supplies)'),
+        ('airtime', 'Airtime'),
+        ('meal', 'Meal/Food'),
+        ('other', 'Other'),
+    )
+    
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='expense_reimbursements')
+    event = models.ForeignKey(Event, on_delete=models.SET_NULL, null=True, blank=True, related_name='reimbursements')
+    expense_type = models.CharField(max_length=20, choices=EXPENSE_TYPES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField(blank=True, help_text="Explain the expense")
+    receipt_photo = models.ImageField(upload_to='receipts/', null=True, blank=True, help_text="Upload receipt/proof (optional)")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    requested_at = models.DateTimeField(auto_now_add=True)
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_reimbursements')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True, help_text="Reason for rejection")
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_expense_type_display()} - KSH {self.amount} ({self.status})"
+    
+    class Meta:
+        ordering = ['-requested_at']
+
+
+@receiver(post_save, sender='attendance.ExpenseReimbursement')
+def update_balance_on_reimbursement_approval(sender, instance, **kwargs):
+    """When an expense reimbursement is approved, add it to the user's balance"""
+    if instance.status == 'approved' and instance.approved_at:
+        # Update user profile balance
+        profile = instance.user.profile
+        # Recalculate total from all unpaid records + adjustments + approved reimbursements
+        total_attendance = AttendanceRecord.objects.filter(
+            user=instance.user, 
+            is_paid=False
+        ).aggregate(total=Sum('amount_paid'))['total'] or 0
+        
+        total_adjustments = BalanceAdjustment.objects.filter(
+            user=instance.user
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        total_reimbursements = ExpenseReimbursement.objects.filter(
+            user=instance.user,
+            status='approved'
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        profile.balance = total_attendance + total_adjustments + total_reimbursements
+        profile.save()

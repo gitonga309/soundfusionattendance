@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Event Assignments | Sound Fusion</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .navbar {
+      background: linear-gradient(135deg, #0d2818 0%, #000 100%);
+      padding: 1.2rem 2rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .navbar h1 {
+      color: #2ecc71;
+      font-size: 1.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-weight: 700;
+    }
+
+    .navbar a {
+      color: #fff;
+      text-decoration: none;
+      padding: 0.7rem 1.5rem;
+      background: #2ecc71;
+      border-radius: 6px;
+      transition: all 0.3s;
+      font-weight: 600;
+    }
+
+    .navbar a:hover {
+      background: #27ae60;
+      transform: translateY(-2px);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    .header {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      color: #0d2818;
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 0.7rem 1.5rem;
+      border: 2px solid #e0e0e0;
+      background: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      color: #666;
+    }
+
+    .filter-btn.active {
+      border-color: #2ecc71;
+      color: #2ecc71;
+      background: #f0fdf4;
+    }
+
+    .filter-btn:hover {
+      border-color: #2ecc71;
+    }
+
+    .assignments-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .assignment-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      overflow: hidden;
+      transition: all 0.3s;
+      border-top: 4px solid #2ecc71;
+    }
+
+    .assignment-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(46, 204, 113, 0.2);
+    }
+
+    .assignment-card.setup {
+      border-top-color: #ff9800;
+    }
+
+    .assignment-card.setup:hover {
+      box-shadow: 0 8px 25px rgba(255, 152, 0, 0.2);
+    }
+
+    .card-header {
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #f0fdf4 0%, #e8f5e9 100%);
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .assignment-card.setup .card-header {
+      background: linear-gradient(135deg, #fff8e1 0%, #ffe8b6 100%);
+    }
+
+    .card-header h3 {
+      color: #0d2818;
+      margin-bottom: 0.3rem;
+      font-size: 1.1rem;
+    }
+
+    .card-header .event-date {
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .card-body {
+      padding: 1.5rem;
+    }
+
+    .info-item {
+      margin-bottom: 1.2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .info-item:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: #999;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .info-value {
+      color: #0d2818;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .location-tag {
+      display: inline-block;
+      background: #e8f5e9;
+      color: #1b5e20;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .assignment-card.setup .location-tag {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .crew-type {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #f0fdf4;
+      color: #2ecc71;
+      padding: 0.5rem 0.8rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+
+    .assignment-card.setup .crew-type {
+      background: #fff8e1;
+      color: #ff9800;
+    }
+
+    .view-btn {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.7rem 1.5rem;
+      background: #2ecc71;
+      color: #0d2818;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .assignment-card.setup .view-btn {
+      background: #ff9800;
+    }
+
+    .view-btn:hover {
+      transform: translateX(4px);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      color: #ccc;
+      margin-bottom: 1rem;
+    }
+
+    .empty-state p {
+      color: #999;
+    }
+
+    @media (max-width: 600px) {
+      .assignments-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .filter-tabs {
+        justify-content: center;
+      }
+
+      .header {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <h1>
+      <i class="fas fa-calendar-alt"></i>
+      My Event Assignments
+    </h1>
+    <a href="{% url 'dashboard' %}"><i class="fas fa-arrow-left"></i> Dashboard</a>
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <h1>Your Assigned Events</h1>
+      <p>Track the events you've been assigned to help with setup or operations</p>
+      
+      <div class="filter-tabs">
+        <button class="filter-btn active" onclick="filterAssignments('all')">
+          <i class="fas fa-list"></i> All ({{ all_count }})
+        </button>
+        <button class="filter-btn" onclick="filterAssignments('setup')">
+          <i class="fas fa-wrench"></i> Setup ({{ setup_count }})
+        </button>
+        <button class="filter-btn" onclick="filterAssignments('event')">
+          <i class="fas fa-star"></i> Event Day ({{ event_count }})
+        </button>
+      </div>
+    </div>
+
+    {% if setup_assignments or event_assignments %}
+      <div class="assignments-grid" id="assignments-container">
+        <!-- Setup Assignments -->
+        {% for event in setup_assignments %}
+        <div class="assignment-card setup" data-filter="setup">
+          <div class="card-header">
+            <h3>{{ event.name }}</h3>
+            <div class="event-date">
+              <i class="fas fa-calendar"></i>
+              {{ event.setup_date|date:"M j, Y"|default:"TBA" }}
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="info-item">
+              <div class="info-label">Assignment Type</div>
+              <div class="info-value">
+                <span class="crew-type">
+                  <i class="fas fa-wrench"></i>
+                  Setup Crew
+                </span>
+              </div>
+            </div>
+
+            {% if event.client_venue %}
+            <div class="info-item">
+              <div class="info-label">Client/Venue</div>
+              <div class="info-value">
+                <i class="fas fa-map-marker-alt"></i>
+                <span class="location-tag">{{ event.client_venue }}</span>
+              </div>
+            </div>
+            {% endif %}
+
+            <div class="info-item">
+              <div class="info-label">Event Date</div>
+              <div class="info-value">
+                <i class="fas fa-calendar-check"></i>
+                {{ event.date|date:"M j, Y" }}
+              </div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">Setup Period</div>
+              <div class="info-value">
+                <i class="fas fa-hourglass"></i>
+                {% if event.setup_date %}
+                  {{ event.setup_date|date:"M j" }} - {{ event.setup_end_date|date:"M j"|default:"TBA" }}
+                {% else %}
+                  TBA
+                {% endif %}
+              </div>
+            </div>
+
+            <a href="{% url 'event_detail' event.id %}" class="view-btn">
+              <i class="fas fa-eye"></i> View Details
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+
+        <!-- Event Day Assignments -->
+        {% for event in event_assignments %}
+        <div class="assignment-card" data-filter="event">
+          <div class="card-header">
+            <h3>{{ event.name }}</h3>
+            <div class="event-date">
+              <i class="fas fa-calendar"></i>
+              {{ event.date|date:"M j, Y" }}
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="info-item">
+              <div class="info-label">Assignment Type</div>
+              <div class="info-value">
+                <span class="crew-type">
+                  <i class="fas fa-star"></i>
+                  Event Day Crew
+                </span>
+              </div>
+            </div>
+
+            {% if event.client_venue %}
+            <div class="info-item">
+              <div class="info-label">Client/Venue</div>
+              <div class="info-value">
+                <i class="fas fa-map-marker-alt"></i>
+                <span class="location-tag">{{ event.client_venue }}</span>
+              </div>
+            </div>
+            {% endif %}
+
+            <div class="info-item">
+              <div class="info-label">Event Date</div>
+              <div class="info-value">
+                <i class="fas fa-calendar-check"></i>
+                {{ event.date|date:"M j, Y" }}
+              </div>
+            </div>
+
+            {% if event.location %}
+            <div class="info-item">
+              <div class="info-label">Location</div>
+              <div class="info-value">
+                <i class="fas fa-map-pin"></i>
+                {{ event.location }}
+              </div>
+            </div>
+            {% endif %}
+
+            <a href="{% url 'event_detail' event.id %}" class="view-btn">
+              <i class="fas fa-eye"></i> View Details
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <p>No events assigned to you yet.</p>
+        <p style="font-size: 0.9rem; margin-top: 0.5rem;">Check back later for new assignments!</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    function filterAssignments(type) {
+      const container = document.getElementById('assignments-container');
+      if (!container) return;
+
+      const cards = container.querySelectorAll('.assignment-card');
+      const buttons = document.querySelectorAll('.filter-btn');
+
+      // Update active button
+      buttons.forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // Filter cards
+      if (type === 'all') {
+        cards.forEach(card => card.style.display = 'block');
+      } else {
+        cards.forEach(card => {
+          card.style.display = card.getAttribute('data-filter') === type ? 'block' : 'none';
+        });
+      }
+    }
+  </script>
+</body>
+</html>

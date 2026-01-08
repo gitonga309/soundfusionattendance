@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from .models import Profile, AttendanceRecord, Event
+from .models import Profile, AttendanceRecord, Event, ExpenseReimbursement
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField(required=True)
@@ -135,3 +135,43 @@ class EventForm(forms.ModelForm):
                 'rows': 4
             })
         }
+
+class ExpenseReimbursementForm(forms.ModelForm):
+    """Form for users to submit expense reimbursement requests"""
+    class Meta:
+        model = ExpenseReimbursement
+        fields = ['event', 'expense_type', 'amount', 'description', 'receipt_photo']
+        widgets = {
+            'event': forms.Select(attrs={
+                'class': 'form-control',
+                'required': 'required'
+            }),
+            'expense_type': forms.Select(attrs={
+                'class': 'form-control',
+                'required': 'required'
+            }),
+            'amount': forms.NumberInput(attrs={
+                'placeholder': 'Amount (KSH)',
+                'min': '0.01',
+                'step': '0.01',
+                'class': 'form-control',
+                'required': 'required'
+            }),
+            'description': forms.Textarea(attrs={
+                'placeholder': 'Explain what this expense was for (e.g., Uber to event venue)',
+                'class': 'form-control',
+                'rows': 3
+            }),
+            'receipt_photo': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            })
+        }
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get('amount')
+        if amount and amount <= 0:
+            raise forms.ValidationError("Amount must be greater than 0.")
+        if amount and amount > 50000:
+            raise forms.ValidationError("Amount cannot exceed KSH 50,000.")
+        return amount
