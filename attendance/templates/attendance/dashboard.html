@@ -353,7 +353,7 @@
                 {% if adjustment.amount >= 0 %}
                   <span class="amount-positive">+KSH {{ adjustment.amount }}</span>
                 {% else %}
-                  <span class="amount-negative">-KSH {{ adjustment.amount|floatformat:2 }}</span>
+                  <span class="amount-negative">KSH {{ adjustment.amount }}</span>
                 {% endif %}
               </td>
             </tr>

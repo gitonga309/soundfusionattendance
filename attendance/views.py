@@ -78,11 +78,15 @@ def view_attendance(request):
     # Optimize query with select_related for event_fk
     records = AttendanceRecord.objects.filter(user=user).select_related('event_fk').order_by('-date')
     
-    # Get balance adjustments made by admin
-    adjustments = BalanceAdjustment.objects.filter(user=user).select_related('adjusted_by').order_by('-date')
+    # Get balance adjustments made by admin - with error handling
+    try:
+        adjustments = BalanceAdjustment.objects.filter(user=user).select_related('adjusted_by').order_by('-date')
+    except Exception as e:
+        adjustments = []
+        messages.warning(request, "Could not load adjustment history.")
     
-    # Get total balance from Profile
-    profile = Profile.objects.get(user=user)
+    # Get total balance from Profile - ensure it exists
+    profile, created = Profile.objects.get_or_create(user=user)
     total_balance = profile.balance
     
     return render(request, 'attendance/view_attendance.html', {

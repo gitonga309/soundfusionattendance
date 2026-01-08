@@ -202,8 +202,6 @@
         </tr>
       </thead>
       <tbody>
-        <!-- Merge and sort attendance records and adjustments -->
-        {% regroup records|dictsort:"date"|dictsortreversed by date as records_by_date %}
         {% for record in records %}
         <tr>
           <td>{{ record.date }}</td>
@@ -234,7 +232,7 @@
             {% if adjustment.amount >= 0 %}
               <strong style="color: #28a745;">+KSH {{ adjustment.amount }}</strong>
             {% else %}
-              <strong style="color: #dc3545;">-KSH {{ adjustment.amount|floatformat:2 }}</strong>
+              <strong style="color: #dc3545;">KSH {{ adjustment.amount }}</strong>
             {% endif %}
           </td>
           <td>—</td>
