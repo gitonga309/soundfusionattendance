@@ -96,7 +96,7 @@ class EventForm(forms.ModelForm):
     """Form for creating and managing events"""
     class Meta:
         model = Event
-        fields = ['name', 'date', 'location', 'description']
+        fields = ['name', 'date', 'location', 'description', 'client_venue', 'setup_date', 'setup_end_date', 'equipments_delivered']
         widgets = {
             'name': forms.TextInput(attrs={
                 'placeholder': 'Event name',
@@ -112,8 +112,25 @@ class EventForm(forms.ModelForm):
                 'placeholder': 'Event location/venue',
                 'class': 'form-control'
             }),
+            'client_venue': forms.TextInput(attrs={
+                'placeholder': 'Client venue/location',
+                'class': 'form-control'
+            }),
+            'setup_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'setup_end_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
             'description': forms.Textarea(attrs={
                 'placeholder': 'Event details and notes',
+                'class': 'form-control',
+                'rows': 4
+            }),
+            'equipments_delivered': forms.Textarea(attrs={
+                'placeholder': 'List of equipments delivered (one per line)',
                 'class': 'form-control',
                 'rows': 4
             })

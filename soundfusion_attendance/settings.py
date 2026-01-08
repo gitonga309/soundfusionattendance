@@ -150,11 +150,14 @@ CACHES = {
 # Cache timeout (1 hour)
 CACHE_TIMEOUT = 3600
 
-# Database optimization
+# Database optimization - only apply OPTIONS for PostgreSQL
 DATABASES['default']['CONN_MAX_AGE'] = 600  # Connection pooling
-DATABASES['default']['OPTIONS'] = {
-    'connect_timeout': 20,
-}
+
+# Only set OPTIONS for PostgreSQL (when DATABASE_URL is set)
+if os.environ.get('DATABASE_URL'):
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 20,
+    }
 
 # Security settings - only enforce HTTPS in production
 # For development/local, explicitly set these to False

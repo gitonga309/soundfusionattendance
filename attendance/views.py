@@ -78,12 +78,16 @@ def view_attendance(request):
     # Optimize query with select_related for event_fk
     records = AttendanceRecord.objects.filter(user=user).select_related('event_fk').order_by('-date')
     
+    # Get balance adjustments made by admin
+    adjustments = BalanceAdjustment.objects.filter(user=user).select_related('adjusted_by').order_by('-date')
+    
     # Get total balance from Profile
     profile = Profile.objects.get(user=user)
     total_balance = profile.balance
     
     return render(request, 'attendance/view_attendance.html', {
         'records': records,
+        'adjustments': adjustments,
         'total_balance': total_balance
     })
 
@@ -106,9 +110,11 @@ def mark_attendance(request):
         if form.is_valid():
             record = form.save(commit=False)
             
-            # Force today's date and current time
+            # Force today's date and capture current time correctly using django timezone
             record.date = today
-            record.check_in_time = timezone.now().time()
+            # Get current time with timezone awareness
+            current_time = timezone.now()
+            record.check_in_time = current_time.time()
             
             # Calculate amount_paid based on overtime
             record.amount_paid = 1000 + (record.overtime_hours * 100)
