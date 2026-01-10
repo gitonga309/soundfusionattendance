@@ -203,12 +203,12 @@ class ExpenseReimbursementAdmin(admin.ModelAdmin):
     list_display = ('user', 'get_event', 'expense_type', 'amount', 'status', 'requested_at')
     list_filter = ('status', 'expense_type', 'requested_at', 'event')
     search_fields = ('user__username', 'event__name', 'description')
-    readonly_fields = ('requested_at', 'approved_at', 'approved_by', 'receipt_photo')
+    readonly_fields = ('requested_at', 'approved_at', 'approved_by', 'receipt_photo_display')
     change_list_template = 'admin/attendance/expensereimbursement/change_list.html'
     
     fieldsets = (
         ('Request Details', {
-            'fields': ('user', 'event', 'expense_type', 'amount', 'description', 'receipt_photo')
+            'fields': ('user', 'event', 'expense_type', 'amount', 'description', 'receipt_photo', 'receipt_photo_display')
         }),
         ('Status & Approval', {
             'fields': ('status', 'approved_by', 'approved_at', 'rejection_reason')
@@ -218,6 +218,21 @@ class ExpenseReimbursementAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def receipt_photo_display(self, obj):
+        """Display receipt photo as a clickable link and preview"""
+        if obj.receipt_photo:
+            from django.utils.html import format_html
+            from django.utils.safestring import mark_safe
+            image_url = obj.receipt_photo.url
+            return format_html(
+                '<div><img src="{}" style="max-width: 300px; max-height: 300px; border-radius: 4px;"/>'
+                '<br><br><a href="{}" target="_blank" style="color: #2ecc71; text-decoration: none;"><i class="fas fa-download"></i> Download Full Image</a></div>',
+                image_url,
+                image_url
+            )
+        return "No receipt uploaded"
+    receipt_photo_display.short_description = "Receipt Photo Preview"
 
     def changelist_view(self, request, extra_context=None):
         """Add reimbursement summary to the changelist view"""
@@ -237,7 +252,6 @@ class ExpenseReimbursementAdmin(admin.ModelAdmin):
         rejected_amount = ExpenseReimbursement.objects.filter(
             status='rejected'
         ).aggregate(total=Sum('amount'))['total'] or 0
-        
         total_requests = ExpenseReimbursement.objects.count()
         
         extra_context['pending_amount'] = float(pending_amount)

@@ -178,9 +178,16 @@ class ExpenseReimbursementForm(forms.ModelForm):
             }),
             'receipt_photo': forms.FileInput(attrs={
                 'class': 'form-control',
-                'accept': 'image/*'
+                'accept': 'image/*',
+                'required': 'required'
             })
         }
+
+    def clean_receipt_photo(self):
+        receipt_photo = self.cleaned_data.get('receipt_photo')
+        if not receipt_photo:
+            raise forms.ValidationError("Receipt/proof document is required for reimbursement requests.")
+        return receipt_photo
 
     def clean_amount(self):
         amount = self.cleaned_data.get('amount')

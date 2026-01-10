@@ -189,6 +189,52 @@
     <p>View and edit your attendance history</p>
   </div>
 
+  {% if is_salaried and monthly_salary %}
+  <div class="table-container" style="background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%); color: #fff; margin-bottom: 2rem;">
+    <h2 style="color: #2ecc71; margin-bottom: 1rem;">
+      <i class="fas fa-coins"></i> Salary Information
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+      <div style="background: rgba(46, 204, 113, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #2ecc71;">
+        <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 0.5rem;">Monthly Salary</p>
+        <h3 style="color: #2ecc71; font-size: 1.8rem;">KSH {{ monthly_salary }}</h3>
+      </div>
+    </div>
+  </div>
+
+  {% if salary_payments %}
+  <div class="table-container" style="margin-bottom: 2rem;">
+    <h2 style="color: #0d2818; margin-bottom: 1rem;">
+      <i class="fas fa-history"></i> Payment History
+    </h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Base Salary</th>
+          <th>Overtime Pay</th>
+          <th>Supper Allowance</th>
+          <th>Total Amount</th>
+          <th>Paid By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for payment in salary_payments %}
+        <tr>
+          <td><strong>{{ payment.month_year|date:"F Y" }}</strong></td>
+          <td>KSH {{ payment.base_salary }}</td>
+          <td>KSH {{ payment.overtime_pay }}</td>
+          <td>KSH {{ payment.supper_allowance }}</td>
+          <td><strong style="color: #2ecc71;">KSH {{ payment.total_amount }}</strong></td>
+          <td>{{ payment.paid_by.username|default:"Admin" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% endif %}
+
   <div class="table-container">
     {% if records or adjustments %}
     <table>

@@ -289,6 +289,7 @@ def update_balance_on_salary_payment(sender, instance, **kwargs):
 
 
 # ========== SIGNAL FOR EVENTS MANAGER GROUP ==========
+# This signal automatically makes users staff when added to Events Manager group
 
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver as m2m_receiver
@@ -300,25 +301,30 @@ def auto_staff_on_events_manager(sender, instance, action, pk_set, **kwargs):
     Automatically enable staff status when a user is added to Events Manager group.
     This makes it seamless to create Events Manager users from admin.
     """
-    if action == 'post_add':
+    if action == 'post_add' and pk_set:
         # Get the Events Manager group ID
         try:
             from django.contrib.auth.models import Group
-            events_manager_group = Group.objects.get(name='Events Manager')
+            # Use filter instead of get to avoid exceptions if group doesn't exist
+            events_manager_group = Group.objects.filter(name='Events Manager').first()
             
             # If the user was added to Events Manager group, make them staff
-            if events_manager_group.pk in pk_set:
-                instance.is_staff = True
-                instance.save()
-        except Exception:
-            pass
+            if events_manager_group and events_manager_group.pk in pk_set:
+                if not instance.is_staff:
+                    instance.is_staff = True
+                    instance.save(update_fields=['is_staff'])
+        except Exception as e:
+            # Silently fail to avoid 500 errors
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in auto_staff_on_events_manager: {str(e)}")
 
 
 class EmployeeOnboarding(models.Model):
     """Track salaried employee onboarding process"""
     ONBOARDING_STATUS = [
-        ('pending', 'Pending'),
-        ('in_progress', 'In Progress'),
+        ('pending', 'Pending Review'),
+        ('accepted', 'Accepted'),
         ('completed', 'Completed'),
         ('rejected', 'Rejected'),
     ]

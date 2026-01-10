@@ -57,6 +57,89 @@
     box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
   }
 
+  .navbar-links {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .menu-toggle {
+    display: none;
+    background: #2ecc71;
+    color: #0d2818;
+    border: none;
+    padding: 0.7rem 1rem;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    background: linear-gradient(135deg, #0d2818 0%, #1a472a 100%);
+    border: 2px solid #2ecc71;
+    border-radius: 8px;
+    display: none;
+    flex-direction: column;
+    min-width: 200px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 200;
+  }
+
+  .dropdown-menu.active {
+    display: flex;
+  }
+
+  .dropdown-menu a {
+    padding: 0.8rem 1.5rem;
+    color: #fff;
+    text-decoration: none;
+    background: transparent;
+    border-radius: 0;
+    margin: 0;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .dropdown-menu a:first-child {
+    border-radius: 6px 6px 0 0;
+  }
+
+  .dropdown-menu a:last-child {
+    border-radius: 0 0 6px 6px;
+  }
+
+  .dropdown-menu a:hover {
+    background: #2ecc71;
+    color: #0d2818;
+    transform: none;
+    box-shadow: none;
+    padding-left: 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .navbar {
+      padding: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .navbar-links {
+      display: none;
+    }
+
+    .menu-toggle {
+      display: block;
+    }
+
+    .navbar h1 {
+      font-size: 1.2rem;
+    }
+  }
+
   .container {
     max-width: 1000px;
     margin: 2rem auto;
@@ -267,7 +350,16 @@
       <i class="fas fa-user-circle"></i>
       Sound Fusion Attendance
     </h1>
-    <div style="display: flex; gap: 1rem;">
+    <button class="menu-toggle" id="menuToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="navbar-links">
+      <a href="{% url 'my_assignments' %}"><i class="fas fa-tasks"></i> My Assignments</a>
+      <a href="{% url 'events_list' %}"><i class="fas fa-calendar-alt"></i> Events</a>
+      <a href="{% url 'view_reimbursements' %}"><i class="fas fa-receipt"></i> Reimbursements</a>
+      <a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
+    <div class="dropdown-menu" id="dropdownMenu">
       <a href="{% url 'my_assignments' %}"><i class="fas fa-tasks"></i> My Assignments</a>
       <a href="{% url 'events_list' %}"><i class="fas fa-calendar-alt"></i> Events</a>
       <a href="{% url 'view_reimbursements' %}"><i class="fas fa-receipt"></i> Reimbursements</a>
@@ -277,7 +369,7 @@
 
   <div class="container">
     <div class="welcome-card">
-      <h1><i class="fas fa-wave-hand"></i> Welcome, {{ user.username }}!</h1>
+      <h1><i class="fas fa-wave-hand"></i> Welcome, {{ user.username }}</h1>
       <p>Track your attendance and manage your balance</p>
     </div>
 
@@ -325,6 +417,34 @@
         {% endif %}
       </div>
     </div>
+
+    {% if salary_info %}
+    <div class="card">
+      <h2><i class="fas fa-coins"></i> Salary Information</h2>
+      <div class="profile-info">
+        <div class="info-item">
+          <strong>Employment Type</strong>
+          {{ salary_info.employment_type }}
+        </div>
+        {% if salary_info.job_role %}
+        <div class="info-item">
+          <strong>Job Role</strong>
+          {{ salary_info.job_role }}
+        </div>
+        {% endif %}
+        <div class="info-item">
+          <strong>Monthly Salary</strong>
+          <span style="font-size: 1.3rem; color: #2ecc71; font-weight: 700;">KSH {{ salary_info.monthly_salary }}</span>
+        </div>
+        {% if salary_info.last_salary_payment %}
+        <div class="info-item">
+          <strong>Last Salary Payment</strong>
+          <span>{{ salary_info.last_salary_payment.month_year|date:"F Y" }} - KSH {{ salary_info.last_salary_payment.total_amount }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
 
     <div class="card">
       <h2><i class="fas fa-history"></i> Recent Activity (Attendance & Admin Changes)</h2>
@@ -387,3 +507,32 @@
   </div>
 </body>
 </html>
+<script>
+  // Mobile menu toggle
+  const menuToggle = document.getElementById('menuToggle');
+  const dropdownMenu = document.getElementById('dropdownMenu');
+
+  if (menuToggle) {
+    menuToggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dropdownMenu.classList.toggle('active');
+    });
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(event) {
+    if (dropdownMenu && !dropdownMenu.contains(event.target) && event.target !== menuToggle) {
+      dropdownMenu.classList.remove('active');
+    }
+  });
+
+  // Close dropdown when a link is clicked
+  const dropdownLinks = dropdownMenu?.querySelectorAll('a');
+  if (dropdownLinks) {
+    dropdownLinks.forEach(link => {
+      link.addEventListener('click', function() {
+        dropdownMenu.classList.remove('active');
+      });
+    });
+  }
+</script>

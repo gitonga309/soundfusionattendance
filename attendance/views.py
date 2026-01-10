@@ -121,7 +121,7 @@ def complete_onboarding(request):
         if 'bank_details' in request.FILES:
             onboarding.bank_details = request.FILES['bank_details']
         
-        onboarding.status = 'in_progress'
+        onboarding.status = 'pending'
         onboarding.save()
         
         messages.success(request, "Application submitted! We will review it and get back to you shortly.")
@@ -236,10 +236,21 @@ def view_attendance(request):
     profile, created = Profile.objects.get_or_create(user=user)
     total_balance = profile.balance
     
+    # Get salary info and payment history for salaried employees
+    salary_payments = []
+    monthly_salary = None
+    if profile.employment_type == 'salaried':
+        from .models import SalaryPayment
+        monthly_salary = profile.monthly_salary
+        salary_payments = SalaryPayment.objects.filter(user=user).order_by('-month_year')
+    
     return render(request, 'attendance/view_attendance.html', {
         'records': records,
         'adjustments': adjustments,
-        'total_balance': total_balance
+        'total_balance': total_balance,
+        'salary_payments': salary_payments,
+        'monthly_salary': monthly_salary,
+        'is_salaried': profile.employment_type == 'salaried'
     })
 
 
