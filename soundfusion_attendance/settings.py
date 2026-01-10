@@ -150,6 +150,10 @@ CACHES = {
 # Cache timeout (1 hour)
 CACHE_TIMEOUT = 3600
 
+# Login URL - redirect to custom login path instead of default /accounts/login/
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'dashboard'
+
 # Database optimization - only apply OPTIONS for PostgreSQL
 DATABASES['default']['CONN_MAX_AGE'] = 600  # Connection pooling
 

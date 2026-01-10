@@ -1,0 +1,31 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+<div style="background: linear-gradient(135deg, #0d2818 0%, #1a472a 100%); color: #fff; padding: 0.8rem; border-radius: 6px; margin-bottom: 1.5rem;">
+    <h3 style="margin: 0 0 0.8rem 0; font-size: 0.95rem;">Reimbursement Summary</h3>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem;">
+        <div style="background: rgba(46, 204, 113, 0.1); border-left: 3px solid #2ecc71; padding: 0.6rem; border-radius: 4px;">
+            <div style="font-size: 0.75rem; color: #bbb; margin-bottom: 0.3rem;">Total Requests</div>
+            <div style="font-size: 1.3rem; font-weight: bold; color: #2ecc71;">{{ total_requests }}</div>
+        </div>
+        
+        <div style="background: rgba(255, 152, 0, 0.1); border-left: 3px solid #ff9800; padding: 0.6rem; border-radius: 4px;">
+            <div style="font-size: 0.75rem; color: #bbb; margin-bottom: 0.3rem;">Pending Amount</div>
+            <div style="font-size: 1.3rem; font-weight: bold; color: #ff9800;">KSH {{ pending_amount|floatformat:0 }}</div>
+        </div>
+        
+        <div style="background: rgba(39, 174, 96, 0.1); border-left: 3px solid #27ae60; padding: 0.6rem; border-radius: 4px;">
+            <div style="font-size: 0.75rem; color: #bbb; margin-bottom: 0.3rem;">Approved Amount</div>
+            <div style="font-size: 1.3rem; font-weight: bold; color: #27ae60;">KSH {{ approved_amount|floatformat:0 }}</div>
+        </div>
+        
+        <div style="background: rgba(231, 76, 60, 0.1); border-left: 3px solid #e74c3c; padding: 0.6rem; border-radius: 4px;">
+            <div style="font-size: 0.75rem; color: #bbb; margin-bottom: 0.3rem;">Rejected Amount</div>
+            <div style="font-size: 1.3rem; font-weight: bold; color: #e74c3c;">KSH {{ rejected_amount|floatformat:0 }}</div>
+        </div>
+    </div>
+</div>
+
+{{ block.super }}
+{% endblock %}

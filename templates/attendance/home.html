@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -147,6 +148,22 @@
             margin-bottom: 2rem;
             color: #ccc;
             max-width: 600px;
+        }
+
+        .motto {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2ecc71;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: pulse-motto 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-motto {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
         }
 
         .hero-buttons {
@@ -532,7 +549,7 @@
     <nav class="navbar">
         <div class="navbar-content">
             <a href="#" class="logo" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #2ecc71; font-weight: bold; font-size: 1.2rem;">
-                <img src="static/images/sfl logo.jpg" alt="Sound Fusion Logo" style="height: 40px; width: auto;">
+                <img src="{% static 'images/sfl logo.jpg' %}" alt="Sound Fusion Logo" style="height: 40px; width: auto;">
                 Sound Fusion
             </a>
             <ul class="nav-links">
@@ -542,7 +559,7 @@
             </ul>
             <div class="auth-buttons">
                 <a href="{% url 'login' %}" class="btn-small btn-login">Login</a>
-                <a href="{% url 'register' %}" class="btn-small btn-register">Sign Up</a>
+                <a href="{% url 'employment_type_selection' %}" class="btn-small btn-register">Sign Up</a>
             </div>
         </div>
     </nav>
@@ -550,10 +567,11 @@
     <!-- HERO SECTION -->
     <section class="hero">
         <div class="hero-content">
+            <div class="motto">✨ Clarity Non Stop ✨</div>
             <h1>Manage Your Team's <span class="hero-highlight">Attendance</span> Effortlessly</h1>
             <p>Sound Fusion Attendance is the smart solution for event companies to track workforce attendance, manage payments, and optimize operations in real-time.</p>
             <div class="hero-buttons">
-                <a href="{% url 'register' %}" class="btn-primary">Get Started Free</a>
+                <a href="{% url 'employment_type_selection' %}" class="btn-primary">Get Started Free</a>
                 <a href="#features" class="btn-secondary">Learn More</a>
             </div>
         </div>
@@ -666,7 +684,7 @@
                 <p>Whether you're organizing weddings, conferences, corporate events, or festivals, Sound Fusion helps you manage your workforce professionally.</p>
             </div>
             <div class="about-image">
-                <img src="static/images/image2.jpg" alt="Sound Fusion Event Management">
+                <img src="{% static 'images/image2.jpg' %}" alt="Sound Fusion Event Management">
                 <h3 style="color: #2ecc71; margin-top: 1rem;">Professional Event Management</h3>
             </div>
         </div>
@@ -677,7 +695,7 @@
         <h2>Ready to Transform Your Workforce Management?</h2>
         <p>Join event companies that trust Sound Fusion for accurate attendance tracking and payment management.</p>
         <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-            <a href="{% url 'register' %}" class="btn-primary">Start Free Today</a>
+            <a href="{% url 'employment_type_selection' %}" class="btn-primary">Start Free Today</a>
             <a href="{% url 'login' %}" class="btn-primary" style="background: #27ae60;">Login</a>
         </div>
     </section>

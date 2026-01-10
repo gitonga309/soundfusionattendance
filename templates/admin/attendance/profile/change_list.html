@@ -1,0 +1,19 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+<div style="background: linear-gradient(135deg, #0d2818 0%, #1a472a 100%); color: #fff; padding: 0.8rem; border-radius: 6px; margin-bottom: 1.5rem;">
+  <h3 style="margin: 0 0 0.8rem 0; font-size: 0.95rem; color: #2ecc71;">Balance Summary</h3>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem;">
+    <div style="background: rgba(255,255,255,0.1); padding: 0.6rem; border-radius: 4px; border-left: 3px solid #2ecc71;">
+      <div style="color: #bbb; font-size: 0.75rem; margin-bottom: 0.3rem;">Total Users</div>
+      <div style="font-size: 1.3rem; font-weight: 700; color: #2ecc71;">{{ total_users }}</div>
+    </div>
+    <div style="background: rgba(255,255,255,0.1); padding: 0.6rem; border-radius: 4px; border-left: 3px solid #ff9800;">
+      <div style="color: #bbb; font-size: 0.75rem; margin-bottom: 0.3rem;">Total Owed</div>
+      <div style="font-size: 1.3rem; font-weight: 700; color: #ff9800;">KSH {{ total_balance }}</div>
+    </div>
+  </div>
+</div>
+
+{{ block.super }}
+{% endblock %}

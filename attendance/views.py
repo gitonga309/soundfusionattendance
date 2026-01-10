@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
-from .forms import UserRegisterForm, AttendanceForm, EventForm, ExpenseReimbursementForm
+from .forms import UserRegisterForm, AttendanceForm, EventForm, ExpenseReimbursementForm, EmploymentTypeForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from .models import AttendanceRecord, Profile, Event, BalanceAdjustment, ExpenseReimbursement
+from .models import AttendanceRecord, Profile, Event, BalanceAdjustment, ExpenseReimbursement, EmployeeOnboarding
 from django.utils import timezone
 from django.db.models import Sum
 
@@ -12,16 +12,132 @@ def home(request):
     """Landing page"""
     return render(request, 'attendance/home.html')
 
+def employment_type_selection(request):
+    """First step: Choose employment type"""
+    if request.method == 'POST':
+        form = EmploymentTypeForm(request.POST)
+        if form.is_valid():
+            employment_type = form.cleaned_data['employment_type']
+            request.session['employment_type'] = employment_type
+            return redirect('register')
+    else:
+        form = EmploymentTypeForm()
+    
+    return render(request, 'attendance/employment_type.html', {'form': form})
+
 def register(request):
+    """Second step: Register account"""
+    # Check if employment type was selected
+    employment_type = request.session.get('employment_type')
+    if not employment_type:
+        return redirect('employment_type_selection')
+    
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            messages.success(request, "Account created successfully! Please log in.")
-            return redirect('login')
+            user = form.save(commit=False)
+            user.save()
+            
+            # Get or create Profile (signal also creates it, so use get_or_create)
+            profile, created = Profile.objects.get_or_create(
+                user=user,
+                defaults={
+                    'phone_number': form.cleaned_data.get('phone_number'),
+                    'email': form.cleaned_data.get('email'),
+                    'date_of_birth': form.cleaned_data.get('date_of_birth'),
+                    'disability': form.cleaned_data.get('disability'),
+                    'employment_type': employment_type
+                }
+            )
+            
+            # Update if it was created by signal
+            if not created:
+                profile.phone_number = form.cleaned_data.get('phone_number')
+                profile.email = form.cleaned_data.get('email')
+                profile.date_of_birth = form.cleaned_data.get('date_of_birth')
+                profile.disability = form.cleaned_data.get('disability')
+                profile.employment_type = employment_type
+                profile.save()
+            
+            # If salaried, redirect to onboarding
+            if employment_type == 'salaried':
+                # Create pending onboarding record
+                EmployeeOnboarding.objects.create(
+                    user=user,
+                    first_name=user.first_name or user.username,
+                    last_name=user.last_name or '',
+                    email=user.email,
+                    phone_number=profile.phone_number,
+                    status='pending'
+                )
+                messages.success(request, "Account created! Please fill in your employment details.")
+                return redirect('complete_onboarding')
+            else:
+                # Casual laborer - direct to dashboard
+                messages.success(request, "Account created successfully! Please log in.")
+                # Clear session
+                if 'employment_type' in request.session:
+                    del request.session['employment_type']
+                return redirect('login')
     else:
         form = UserRegisterForm()
-    return render(request, 'attendance/register.html', {'form': form})
+    
+    context = {
+        'form': form,
+        'employment_type': employment_type,
+        'employment_type_display': dict(EmploymentTypeForm.EMPLOYMENT_CHOICES).get(employment_type)
+    }
+    return render(request, 'attendance/register.html', context)
+
+@login_required
+def complete_onboarding(request):
+    """Complete salaried employee onboarding"""
+    try:
+        onboarding = EmployeeOnboarding.objects.get(user=request.user)
+    except EmployeeOnboarding.DoesNotExist:
+        messages.warning(request, "No onboarding application found.")
+        return redirect('dashboard')
+    
+    # Check if already completed
+    if onboarding.status == 'completed':
+        messages.info(request, "Your onboarding has already been approved!")
+        return redirect('dashboard')
+    elif onboarding.status == 'rejected':
+        messages.error(request, f"Your application was rejected: {onboarding.rejection_reason}")
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        onboarding.first_name = request.POST.get('first_name', onboarding.first_name)
+        onboarding.last_name = request.POST.get('last_name', onboarding.last_name)
+        onboarding.job_role = request.POST.get('job_role')
+        onboarding.monthly_salary = request.POST.get('monthly_salary')
+        onboarding.date_of_birth = request.POST.get('date_of_birth') or onboarding.date_of_birth
+        onboarding.national_id = request.POST.get('national_id')
+        onboarding.bank_account = request.POST.get('bank_account')
+        
+        # Handle file uploads
+        if 'id_photo' in request.FILES:
+            onboarding.id_photo = request.FILES['id_photo']
+        if 'bank_details' in request.FILES:
+            onboarding.bank_details = request.FILES['bank_details']
+        
+        onboarding.status = 'in_progress'
+        onboarding.save()
+        
+        messages.success(request, "Application submitted! We will review it and get back to you shortly.")
+        return redirect('onboarding_status')
+    
+    return render(request, 'attendance/complete_onboarding.html', {'onboarding': onboarding})
+
+@login_required
+def onboarding_status(request):
+    """Check onboarding application status"""
+    try:
+        onboarding = EmployeeOnboarding.objects.get(user=request.user)
+    except EmployeeOnboarding.DoesNotExist:
+        return redirect('dashboard')
+    
+    return render(request, 'attendance/onboarding_status.html', {'onboarding': onboarding})
 
 def user_login(request):
     if request.method == 'POST':
@@ -42,6 +158,7 @@ def user_login(request):
 def dashboard(request):
     user = request.user
     today = timezone.now().date()
+    profile = Profile.objects.get(user=user)
 
     # Fetch today's attendance with select_related for event
     try:
@@ -52,7 +169,6 @@ def dashboard(request):
         attendance_status = "Not recorded"
 
     # Get total balance from Profile
-    profile = Profile.objects.get(user=user)
     total_balance = profile.balance
 
     # Get last 5 attendance records for recent balance changes
@@ -61,13 +177,44 @@ def dashboard(request):
     # Get last 5 balance adjustments made by admin
     recent_adjustments = BalanceAdjustment.objects.filter(user=user).order_by('-date')[:5]
 
+    # For salaried employees, show salary information
+    # Check if employee has completed onboarding with status "accepted" or higher
+    salary_info = None
+    if profile.employment_type == 'salaried':
+        # Check onboarding status - show salary once accepted
+        try:
+            onboarding = EmployeeOnboarding.objects.filter(user=user).latest('submitted_at')
+            # Show salary info if status is accepted, completed, or any active status (not pending/rejected)
+            if onboarding.status in ['accepted', 'completed']:
+                from .models import SalaryPayment
+                last_salary = SalaryPayment.objects.filter(user=user).order_by('-month_year').first()
+                salary_info = {
+                    'job_role': profile.job_role,
+                    'monthly_salary': profile.monthly_salary,
+                    'last_salary_payment': last_salary,
+                    'employment_type': 'Salaried Employee',
+                    'onboarding_status': onboarding.get_status_display() if hasattr(onboarding, 'get_status_display') else onboarding.status
+                }
+        except EmployeeOnboarding.DoesNotExist:
+            # No onboarding record, but still salaried - show basic info
+            from .models import SalaryPayment
+            last_salary = SalaryPayment.objects.filter(user=user).order_by('-month_year').first()
+            salary_info = {
+                'job_role': profile.job_role,
+                'monthly_salary': profile.monthly_salary,
+                'last_salary_payment': last_salary,
+                'employment_type': 'Salaried Employee'
+            }
+
     context = {
         'user': user,
+        'profile': profile,
         'today_record': today_record,
         'attendance_status': attendance_status,
         'total_balance': total_balance,
         'recent_records': recent_records,
         'recent_adjustments': recent_adjustments,
+        'salary_info': salary_info,
     }
 
     return render(request, 'attendance/dashboard.html', context)
@@ -100,6 +247,7 @@ def view_attendance(request):
 def mark_attendance(request):
     today = timezone.now().date()
     user = request.user
+    profile = user.profile
 
     # Check if record exists for today - limit to once per day
     try:
@@ -120,8 +268,15 @@ def mark_attendance(request):
             current_time = timezone.now()
             record.check_in_time = current_time.time()
             
-            # Calculate amount_paid based on overtime
-            record.amount_paid = 1000 + (record.overtime_hours * 100)
+            # Calculate amount_paid based on employment type
+            # Salaried: Only overtime (no 1000 KSH base)
+            # Hourly: Base 1000 KSH + overtime
+            if profile.employment_type == 'salaried':
+                # Salaried: Only overtime amount
+                record.amount_paid = record.overtime_hours * 100
+            else:
+                # Hourly: Base + overtime
+                record.amount_paid = 1000 + (record.overtime_hours * 100)
             
             # Store original overtime hours on first creation
             record.original_overtime_hours = record.overtime_hours
@@ -159,8 +314,12 @@ def edit_attendance(request, record_id):
             messages.error(request, "Overtime must be a valid number")
             return redirect('view_attendance')
 
-        # Store the old amount earned
-        old_earned = 1000 + (record.overtime_hours * 100)
+        # Store the old amount earned based on employment type
+        employment_type = request.user.profile.employment_type
+        if employment_type == 'salaried':
+            old_earned = record.overtime_hours * 100
+        else:
+            old_earned = 1000 + (record.overtime_hours * 100)
         
         # Update record with new overtime and event
         record.overtime_hours = overtime_hours
@@ -171,8 +330,11 @@ def edit_attendance(request, record_id):
                 messages.error(request, "Selected event does not exist")
                 return redirect('view_attendance')
         
-        # Calculate NEW earned amount
-        new_earned = 1000 + (overtime_hours * 100)
+        # Calculate NEW earned amount based on employment type
+        if employment_type == 'salaried':
+            new_earned = overtime_hours * 100
+        else:
+            new_earned = 1000 + (overtime_hours * 100)
         
         # Update amount_paid: subtract old earned amount, add new earned amount
         # This accounts for admin adjustments that may have been made

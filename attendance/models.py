@@ -9,12 +9,34 @@ from django.core.cache import cache
 
 
 class Profile(models.Model):
+    EMPLOYMENT_TYPES = (
+        ('casual', 'Casual Laborer'),
+        ('salaried', 'Salaried Employee'),
+    )
+    
+    JOB_ROLES = (
+        ('repair', 'Repair Technician'),
+        ('driver', 'Driver'),
+        ('accountant', 'Accountant'),
+        ('planner', 'Event Planner'),
+        ('cleaner', 'Cleaner'),
+        ('other', 'Other'),
+    )
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone_number = models.CharField(max_length=15, blank=True)
     email = models.EmailField(blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     disability = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    # Employment type and salaried fields
+    employment_type = models.CharField(max_length=20, choices=EMPLOYMENT_TYPES, default='casual', 
+                                      help_text="Is this person a casual laborer or salaried employee?")
+    job_role = models.CharField(max_length=50, choices=JOB_ROLES, blank=True, null=True,
+                               help_text="Job role (for salaried employees)")
+    monthly_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, blank=True,
+                                        help_text="Monthly salary amount (for salaried employees)")
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
@@ -42,6 +64,10 @@ class AttendanceRecord(models.Model):
     admin_adjustment = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     overtime_edited = models.BooleanField(default=False)
     original_overtime_hours = models.PositiveIntegerField(default=0)
+    
+    # For salaried employees
+    supper_allowance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0, blank=True,
+                                          help_text="Supper allowance for salaried employees")
 
     def __str__(self):
         return f"{self.user.username} - {self.date}"
@@ -210,3 +236,127 @@ def update_balance_on_reimbursement_approval(sender, instance, **kwargs):
         
         profile.balance = total_attendance + total_adjustments + total_reimbursements
         profile.save()
+
+
+class SalaryPayment(models.Model):
+    """Track monthly salary payments for salaried employees"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='salary_payments')
+    month_year = models.DateField(help_text="First day of the month for which salary is paid")
+    base_salary = models.DecimalField(max_digits=10, decimal_places=2, help_text="Base monthly salary")
+    overtime_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0.0, help_text="Total overtime pay for the month")
+    supper_allowance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0, help_text="Total supper allowance for the month")
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Total amount paid (base + overtime + supper)")
+    
+    paid_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_salary_payments')
+    paid_at = models.DateTimeField(auto_now_add=True)
+    
+    notes = models.TextField(blank=True, help_text="Additional notes about this payment")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.month_year.strftime('%B %Y')} - KSH {self.total_amount}"
+
+    class Meta:
+        ordering = ['-month_year']
+        unique_together = ('user', 'month_year')  # Only one payment per user per month
+
+
+@receiver(post_save, sender='attendance.SalaryPayment')
+def update_balance_on_salary_payment(sender, instance, **kwargs):
+    """Add salary payment to user's balance"""
+    profile = instance.user.profile
+    
+    # Recalculate total from all sources
+    total_attendance = AttendanceRecord.objects.filter(
+        user=instance.user, 
+        is_paid=False
+    ).aggregate(total=Sum('amount_paid'))['total'] or 0
+    
+    total_adjustments = BalanceAdjustment.objects.filter(
+        user=instance.user
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    total_reimbursements = ExpenseReimbursement.objects.filter(
+        user=instance.user,
+        status='approved'
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    total_salaries = SalaryPayment.objects.filter(
+        user=instance.user
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
+    
+    profile.balance = total_attendance + total_adjustments + total_reimbursements + total_salaries
+    profile.save()
+
+
+# ========== SIGNAL FOR EVENTS MANAGER GROUP ==========
+
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver as m2m_receiver
+
+
+@m2m_receiver(m2m_changed, sender=User.groups.through)
+def auto_staff_on_events_manager(sender, instance, action, pk_set, **kwargs):
+    """
+    Automatically enable staff status when a user is added to Events Manager group.
+    This makes it seamless to create Events Manager users from admin.
+    """
+    if action == 'post_add':
+        # Get the Events Manager group ID
+        try:
+            from django.contrib.auth.models import Group
+            events_manager_group = Group.objects.get(name='Events Manager')
+            
+            # If the user was added to Events Manager group, make them staff
+            if events_manager_group.pk in pk_set:
+                instance.is_staff = True
+                instance.save()
+        except Exception:
+            pass
+
+
+class EmployeeOnboarding(models.Model):
+    """Track salaried employee onboarding process"""
+    ONBOARDING_STATUS = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    JOB_ROLES = [
+        ('repair_technician', 'Repair Technician'),
+        ('driver', 'Driver'),
+        ('accountant', 'Accountant'),
+        ('event_planner', 'Event Planner'),
+        ('cleaner', 'Cleaner'),
+        ('other', 'Other'),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='onboarding', null=True, blank=True)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.EmailField()
+    phone_number = models.CharField(max_length=15)
+    job_role = models.CharField(max_length=50, choices=JOB_ROLES, blank=True, null=True)
+    monthly_salary = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    national_id = models.CharField(max_length=20, blank=True)
+    bank_account = models.CharField(max_length=50, blank=True, help_text="Bank account for salary payments")
+    
+    # Document uploads
+    id_photo = models.FileField(upload_to='onboarding/id_photos/', blank=True)
+    employment_letter = models.FileField(upload_to='onboarding/letters/', blank=True)
+    bank_details = models.FileField(upload_to='onboarding/bank_details/', blank=True)
+    
+    # Status tracking
+    status = models.CharField(max_length=20, choices=ONBOARDING_STATUS, default='pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='onboardings_reviewed')
+    rejection_reason = models.TextField(blank=True, help_text="If rejected, provide reason for rejection")
+    
+    class Meta:
+        ordering = ['-submitted_at']
+    
+    def __str__(self):
+        return f"Onboarding - {self.first_name} {self.last_name} ({self.get_status_display()})"

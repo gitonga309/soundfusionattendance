@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Sound Fusion | Choose Your Path</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+        .container { max-width: 800px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .header { background: linear-gradient(135deg, #0d2818 0%, #1a472a 100%); color: white; padding: 3rem 2rem; text-align: center; }
+        .header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .header p { font-size: 1.1rem; opacity: 0.9; }
+        .content { padding: 3rem 2rem; }
+        form { }
+        .form-group { margin-bottom: 2rem; }
+        .option-group { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+        .radio-option { display: none; }
+        .radio-option-label { display: block; padding: 2rem; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; }
+        .radio-option-label:hover { border-color: #667eea; background: #f8f9ff; }
+        .radio-option:checked + .radio-option-label { border-color: #667eea; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2); }
+        .option-header { display: flex; align-items: center; margin-bottom: 0.8rem; }
+        .option-icon { font-size: 2rem; margin-right: 1rem; }
+        .option-title { font-size: 1.3rem; font-weight: 600; color: #333; }
+        .option-description { color: #666; line-height: 1.6; }
+        .submit-button { width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; font-weight: 600; transition: opacity 0.3s; margin-top: 2rem; }
+        .submit-button:hover { opacity: 0.9; }
+        .back-link { text-align: center; margin-top: 2rem; }
+        .back-link a { color: #667eea; text-decoration: none; }
+        .back-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to Sound Fusion</h1>
+            <p>Choose how you'd like to work with us</p>
+        </div>
+        
+        <div class="content">
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <div class="option-group">
+                        <!-- Casual Laborer Option -->
+                        <label>
+                            <input type="radio" name="employment_type" value="casual" class="radio-option" required>
+                            <div class="radio-option-label">
+                                <div class="option-header">
+                                    <div class="option-icon">👨‍💼</div>
+                                    <div class="option-title">Casual Laborer</div>
+                                </div>
+                                <div class="option-description">
+                                    Work on a per-event basis. Get paid KSH 1,000 per day plus overtime allowances. Perfect if you want flexibility and can work multiple events.
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <!-- Salaried Employee Option -->
+                        <label>
+                            <input type="radio" name="employment_type" value="salaried" class="radio-option" required>
+                            <div class="radio-option-label">
+                                <div class="option-header">
+                                    <div class="option-icon">💼</div>
+                                    <div class="option-title">Salaried Employee</div>
+                                </div>
+                                <div class="option-description">
+                                    Apply for a permanent position (Repair Technician, Driver, Accountant, Event Planner, or Cleaner). Enjoy a fixed monthly salary plus benefits. Requires approval after application.
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-button">Continue to Registration</button>
+            </form>
+            
+            <div class="back-link">
+                <a href="{% url 'home' %}">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

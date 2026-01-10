@@ -2,7 +2,21 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from .models import Profile, AttendanceRecord, Event, ExpenseReimbursement
+from .models import Profile, AttendanceRecord, Event, ExpenseReimbursement, EmployeeOnboarding
+
+class EmploymentTypeForm(forms.Form):
+    """Form to select employment type during signup"""
+    EMPLOYMENT_CHOICES = (
+        ('casual', 'Casual Laborer - Join us for casual work per event'),
+        ('salaried', 'Salaried Employee - Apply for a permanent position'),
+    )
+    
+    employment_type = forms.ChoiceField(
+        choices=EMPLOYMENT_CHOICES,
+        widget=forms.RadioSelect,
+        label='How would you like to join Sound Fusion?',
+        help_text='Choose the option that best fits you'
+    )
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField(required=True)

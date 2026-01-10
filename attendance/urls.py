@@ -4,8 +4,11 @@ from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('employment-type/', views.employment_type_selection, name='employment_type_selection'),
     path('register/', views.register, name='register'),
     path('login/', views.user_login, name='login'),
+    path('onboarding/complete/', views.complete_onboarding, name='complete_onboarding'),
+    path('onboarding/status/', views.onboarding_status, name='onboarding_status'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('view-attendance/', views.view_attendance, name='view_attendance'),
     path('edit-attendance/<int:record_id>/', views.edit_attendance, name='edit_attendance'),

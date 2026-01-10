@@ -1,0 +1,389 @@
+<!-- attendance/templates/attendance/dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | Sound Fusion</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f5f7fa;
+    min-height: 100vh;
+    color: #333;
+  }
+
+  .navbar {
+    background: linear-gradient(135deg, #0d2818 0%, #000 100%);
+    padding: 1.2rem 2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .navbar h1 {
+    color: #2ecc71;
+    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-weight: 700;
+  }
+
+  .navbar a {
+    color: #fff;
+    text-decoration: none;
+    padding: 0.7rem 1.5rem;
+    background: #2ecc71;
+    border-radius: 6px;
+    transition: all 0.3s;
+    font-weight: 600;
+  }
+
+  .navbar a:hover {
+    background: #27ae60;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+  }
+
+  .welcome-card {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+  }
+
+  .welcome-card h1 {
+    color: #1a1a2e;
+    margin-bottom: 0.5rem;
+  }
+
+  .welcome-card p {
+    color: #666;
+    font-size: 0.95rem;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
+    color: #fff;
+    padding: 1.8rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(46, 204, 113, 0.15);
+  }
+
+  .stat-card h3 {
+    font-size: 0.85rem;
+    opacity: 0.85;
+    margin-bottom: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .stat-card .value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2ecc71;
+  }
+
+  .card {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+  }
+
+  .card h2 {
+    margin-bottom: 1.5rem;
+    color: #0d2818;
+    border-bottom: 3px solid #2ecc71;
+    padding-bottom: 0.8rem;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .card h2 i {
+    color: #2ecc71;
+  }
+
+  .profile-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .info-item {
+    background: #f8f9fa;
+    padding: 1.2rem;
+    border-radius: 8px;
+    border-left: 4px solid #2ecc71;
+  }
+
+  .info-item strong {
+    display: block;
+    color: #2ecc71;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .adjustments-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .adjustments-table thead {
+    background: linear-gradient(135deg, #0d2818 0%, #1a472a 100%);
+    color: #fff;
+  }
+
+  .adjustments-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .adjustments-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  .adjustments-table tbody tr {
+    transition: all 0.3s;
+  }
+
+  .adjustments-table tbody tr:hover {
+    background: #f8f9fa;
+  }
+
+  .amount-positive {
+    color: #2ecc71;
+    font-weight: 700;
+  }
+
+  .amount-negative {
+    color: #e74c3c;
+    font-weight: 700;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #e8f8f5;
+    color: #0d2818;
+  }
+
+  .links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+
+  .links a {
+    padding: 1rem;
+    background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+  }
+
+  .links a:hover {
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(46, 204, 113, 0.3);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2.5rem;
+    color: #999;
+  }
+
+  .empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 0.8rem;
+    color: #2ecc71;
+  }
+
+  @media(max-width:600px){
+    .links { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="navbar">
+    <h1>
+      <i class="fas fa-user-circle"></i>
+      Sound Fusion Attendance
+    </h1>
+    <div style="display: flex; gap: 1rem;">
+      <a href="{% url 'my_assignments' %}"><i class="fas fa-tasks"></i> My Assignments</a>
+      <a href="{% url 'events_list' %}"><i class="fas fa-calendar-alt"></i> Events</a>
+      <a href="{% url 'view_reimbursements' %}"><i class="fas fa-receipt"></i> Reimbursements</a>
+      <a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="welcome-card">
+      <h1><i class="fas fa-wave-hand"></i> Welcome, {{ user.username }}!</h1>
+      <p>Track your attendance and manage your balance</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3><i class="fas fa-calendar-check"></i> Today's Status</h3>
+        <div class="value">{{ attendance_status }}</div>
+      </div>
+      <div class="stat-card">
+        <h3><i class="fas fa-wallet"></i> Total Balance</h3>
+        <div class="value">KSH {{ total_balance }}</div>
+      </div>
+      {% if today_record %}
+      <div class="stat-card">
+        <h3><i class="fas fa-clock"></i> Today's Pay</h3>
+        <div class="value">KSH {{ today_record.amount_paid }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-id-card"></i> Profile Information</h2>
+      <div class="profile-info">
+        <div class="info-item">
+          <strong>Full Name</strong>
+          {{ user.get_full_name|default:user.username }}
+        </div>
+        <div class="info-item">
+          <strong>Email</strong>
+          {{ user.email }}
+        </div>
+        <div class="info-item">
+          <strong>Username</strong>
+          {{ user.username }}
+        </div>
+        {% if today_record %}
+        <div class="info-item">
+          <strong>Today's Event</strong>
+          {{ today_record.event|default:"Not specified" }}
+        </div>
+        <div class="info-item">
+          <strong>Overtime Hours</strong>
+          <span class="badge">{{ today_record.overtime_hours }} hrs</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-history"></i> Recent Activity (Attendance & Admin Changes)</h2>
+      {% if recent_records or recent_adjustments %}
+        <table class="adjustments-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Details</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in recent_records %}
+            <tr>
+              <td>{{ record.date|date:"M d, Y" }}</td>
+              <td><span class="badge">Attendance</span></td>
+              <td>{{ record.event_fk.name|default:"Not specified" }} - {{ record.overtime_hours }} hrs OT</td>
+              <td>
+                <span class="amount-positive">+KSH {{ record.amount_paid }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+            {% for adjustment in recent_adjustments %}
+            <tr>
+              <td>{{ adjustment.date|date:"M d, Y - H:i" }}</td>
+              <td><span class="badge" style="background: #ffe8e8; color: #c0392b;">Admin Change</span></td>
+              <td>{{ adjustment.reason }}</td>
+              <td>
+                {% if adjustment.amount >= 0 %}
+                  <span class="amount-positive">+KSH {{ adjustment.amount }}</span>
+                {% else %}
+                  <span class="amount-negative">KSH {{ adjustment.amount }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+      <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <p>No activity yet. Start by marking your attendance!</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="links">
+      <a href="{% url 'mark_attendance' %}">
+        <i class="fas fa-clipboard-check"></i> Mark Attendance
+      </a>
+      <a href="{% url 'view_attendance' %}">
+        <i class="fas fa-list"></i> View Records
+      </a>
+      <a href="{% url 'submit_reimbursement' %}">
+        <i class="fas fa-plus-circle"></i> Request Reimbursement
+      </a>
+    </div>
+  </div>
+</body>
+</html>
