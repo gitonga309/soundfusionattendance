@@ -357,10 +357,12 @@ class EmployeeOnboardingAdmin(admin.ModelAdmin):
     
     def get_status_badge(self, obj):
         """Display color-coded status badge"""
+        from django.utils.html import format_html
+        
         status_colors = {
             'pending': '#FFC107',      # Yellow/Orange
             'accepted': '#17A2B8',     # Blue
-            'completed': '#28A745',    # Green
+            'completed': '#6C757D',    # Grey
             'rejected': '#DC3545',     # Red
         }
         color = status_colors.get(obj.status, '#6C757D')
@@ -368,34 +370,47 @@ class EmployeeOnboardingAdmin(admin.ModelAdmin):
         status_labels = {
             'pending': '⏳ Pending Review',
             'accepted': '✅ Accepted',
-            'completed': '🎉 Completed',
+            'completed': 'Completed',
             'rejected': '❌ Rejected',
         }
         label = status_labels.get(obj.status, obj.status)
         
-        return f'<span style="background: {color}; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold;">{label}</span>'
+        return format_html(
+            '<span style="background: {}; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold;">{}</span>',
+            color,
+            label
+        )
     get_status_badge.short_description = 'Status'
-    get_status_badge.allow_tags = True
     
     def get_profile_status(self, obj):
         """Check if Profile already exists"""
+        from django.utils.html import format_html
+        
         if not obj.user:
-            return '<span style="color: #999;">⚠️ No user account yet</span>'
+            return format_html(
+                '<span style="color: #999;">⚠️ No user account yet</span>'
+            )
         
         try:
             profile = Profile.objects.get(user=obj.user)
             salary = profile.monthly_salary or 0
             balance = profile.balance or 0
-            return f'<div style="background: #e7f3ff; padding: 10px; border-left: 4px solid #2ecc71; border-radius: 3px;">' \
-                   f'<strong>✓ Profile Created</strong><br>' \
-                   f'💰 Monthly Salary: KSH {salary:,.0f}<br>' \
-                   f'📊 Current Balance: KSH {balance:,.0f}<br>' \
-                   f'👤 Status: {profile.get_employment_type_display()}' \
-                   f'</div>'
+            return format_html(
+                '<div style="background: #e7f3ff; padding: 10px; border-left: 4px solid #2ecc71; border-radius: 3px;">'
+                '<strong>✓ Profile Created</strong><br>'
+                '💰 Monthly Salary: KSH {:,.0f}<br>'
+                '📊 Current Balance: KSH {:,.0f}<br>'
+                '👤 Status: {}'
+                '</div>',
+                salary,
+                balance,
+                profile.get_employment_type_display()
+            )
         except Profile.DoesNotExist:
-            return '<span style="color: #DC3545;">✗ No Profile yet</span>'
+            return format_html(
+                '<span style="color: #DC3545;">✗ No Profile yet</span>'
+            )
     get_profile_status.short_description = 'Employee Profile Status'
-    get_profile_status.allow_tags = True
     
     def changelist_view(self, request, extra_context=None):
         """Add statistics to the changelist view"""
@@ -509,52 +524,7 @@ class EmployeeOnboardingAdmin(admin.ModelAdmin):
             obj.reviewed_at = timezone.now()
         
         super().save_model(request, obj, form, change)
-    
-    def get_full_name(self, obj):
-        return f"{obj.first_name} {obj.last_name}"
-    get_full_name.short_description = 'Full Name'
-    
-    def get_status_badge(self, obj):
-        """Display color-coded status badge"""
-        status_colors = {
-            'pending': '#FFC107',      # Yellow/Orange
-            'accepted': '#17A2B8',     # Blue
-            'completed': '#28A745',    # Green
-            'rejected': '#DC3545',     # Red
-        }
-        color = status_colors.get(obj.status, '#6C757D')
-        
-        status_labels = {
-            'pending': '⏳ Pending Review',
-            'accepted': '✅ Accepted',
-            'completed': '🎉 Completed',
-            'rejected': '❌ Rejected',
-        }
-        label = status_labels.get(obj.status, obj.status)
-        
-        return f'<span style="background: {color}; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold;">{label}</span>'
-    get_status_badge.short_description = 'Status'
-    get_status_badge.allow_tags = True
-    
-    def get_profile_status(self, obj):
-        """Check if Profile already exists"""
-        if not obj.user:
-            return '<span style="color: #999;">⚠️ No user account yet</span>'
-        
-        try:
-            profile = Profile.objects.get(user=obj.user)
-            salary = profile.monthly_salary or 0
-            balance = profile.balance or 0
-            return f'<div style="background: #e7f3ff; padding: 10px; border-left: 4px solid #2ecc71; border-radius: 3px;">' \
-                   f'<strong>✓ Profile Created</strong><br>' \
-                   f'💰 Monthly Salary: KSH {salary:,.0f}<br>' \
-                   f'📊 Current Balance: KSH {balance:,.0f}<br>' \
-                   f'👤 Status: {profile.get_employment_type_display()}' \
-                   f'</div>'
-        except Profile.DoesNotExist:
-            return '<span style="color: #DC3545;">✗ No Profile yet</span>'
-    get_profile_status.short_description = 'Employee Profile Status'
-    get_profile_status.allow_tags = True
+
     
     def changelist_view(self, request, extra_context=None):
         """Add statistics to the changelist view"""
