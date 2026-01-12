@@ -50,7 +50,11 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
-    instance.profile.save()
+    try:
+        instance.profile.save()
+    except AttributeError:
+        # Profile might not exist yet, skip
+        pass
 
 
 class AttendanceRecord(models.Model):
@@ -91,17 +95,21 @@ def update_balance_on_attendance(sender, instance, **kwargs):
     Update user's balance whenever attendance record is created or modified.
     Balance = Sum of all unpaid attendance records
     """
-    profile = Profile.objects.get(user=instance.user)
-    
-    # Recalculate total from all unpaid records
-    total_attendance = AttendanceRecord.objects.filter(
-        user=instance.user, 
-        is_paid=False
-    ).aggregate(total=Sum('amount_paid'))['total'] or 0
-    
-    # Final balance = attendance payments only
-    profile.balance = total_attendance
-    profile.save()
+    try:
+        profile = Profile.objects.get(user=instance.user)
+        
+        # Recalculate total from all unpaid records
+        total_attendance = AttendanceRecord.objects.filter(
+            user=instance.user, 
+            is_paid=False
+        ).aggregate(total=Sum('amount_paid'))['total'] or 0
+        
+        # Final balance = attendance payments only
+        profile.balance = total_attendance
+        profile.save()
+    except Profile.DoesNotExist:
+        # Profile not created yet, skip
+        pass
 
 
 class Event(models.Model):
@@ -159,22 +167,26 @@ class BalanceAdjustment(models.Model):
 @receiver(post_save, sender='attendance.BalanceAdjustment')
 def update_balance_on_adjustment(sender, instance, **kwargs):
     """Update user's balance when admin makes adjustment"""
-    profile = instance.user.profile
-    
-    # Recalculate total from all unpaid records
-    total_attendance = AttendanceRecord.objects.filter(
-        user=instance.user, 
-        is_paid=False
-    ).aggregate(total=Sum('amount_paid'))['total'] or 0
-    
-    # Get total from adjustments
-    total_adjustments = BalanceAdjustment.objects.filter(
-        user=instance.user
-    ).aggregate(total=Sum('amount'))['total'] or 0
-    
-    # Final balance = attendance payments + adjustments
-    profile.balance = total_attendance + total_adjustments
-    profile.save()
+    try:
+        profile = instance.user.profile
+        
+        # Recalculate total from all unpaid records
+        total_attendance = AttendanceRecord.objects.filter(
+            user=instance.user, 
+            is_paid=False
+        ).aggregate(total=Sum('amount_paid'))['total'] or 0
+        
+        # Get total from adjustments
+        total_adjustments = BalanceAdjustment.objects.filter(
+            user=instance.user
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        # Final balance = attendance payments + adjustments
+        profile.balance = total_attendance + total_adjustments
+        profile.save()
+    except AttributeError:
+        # Profile might not exist yet, skip
+        pass
 
 
 class ExpenseReimbursement(models.Model):
@@ -217,25 +229,29 @@ class ExpenseReimbursement(models.Model):
 def update_balance_on_reimbursement_approval(sender, instance, **kwargs):
     """When an expense reimbursement is approved, add it to the user's balance"""
     if instance.status == 'approved' and instance.approved_at:
-        # Update user profile balance
-        profile = instance.user.profile
-        # Recalculate total from all unpaid records + adjustments + approved reimbursements
-        total_attendance = AttendanceRecord.objects.filter(
-            user=instance.user, 
-            is_paid=False
-        ).aggregate(total=Sum('amount_paid'))['total'] or 0
-        
-        total_adjustments = BalanceAdjustment.objects.filter(
-            user=instance.user
-        ).aggregate(total=Sum('amount'))['total'] or 0
-        
-        total_reimbursements = ExpenseReimbursement.objects.filter(
-            user=instance.user,
-            status='approved'
-        ).aggregate(total=Sum('amount'))['total'] or 0
-        
-        profile.balance = total_attendance + total_adjustments + total_reimbursements
-        profile.save()
+        try:
+            # Update user profile balance
+            profile = instance.user.profile
+            # Recalculate total from all unpaid records + adjustments + approved reimbursements
+            total_attendance = AttendanceRecord.objects.filter(
+                user=instance.user, 
+                is_paid=False
+            ).aggregate(total=Sum('amount_paid'))['total'] or 0
+            
+            total_adjustments = BalanceAdjustment.objects.filter(
+                user=instance.user
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            total_reimbursements = ExpenseReimbursement.objects.filter(
+                user=instance.user,
+                status='approved'
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            profile.balance = total_attendance + total_adjustments + total_reimbursements
+            profile.save()
+        except AttributeError:
+            # Profile might not exist yet, skip
+            pass
 
 
 class SalaryPayment(models.Model):
@@ -263,29 +279,33 @@ class SalaryPayment(models.Model):
 @receiver(post_save, sender='attendance.SalaryPayment')
 def update_balance_on_salary_payment(sender, instance, **kwargs):
     """Add salary payment to user's balance"""
-    profile = instance.user.profile
-    
-    # Recalculate total from all sources
-    total_attendance = AttendanceRecord.objects.filter(
-        user=instance.user, 
-        is_paid=False
-    ).aggregate(total=Sum('amount_paid'))['total'] or 0
-    
-    total_adjustments = BalanceAdjustment.objects.filter(
-        user=instance.user
-    ).aggregate(total=Sum('amount'))['total'] or 0
-    
-    total_reimbursements = ExpenseReimbursement.objects.filter(
-        user=instance.user,
-        status='approved'
-    ).aggregate(total=Sum('amount'))['total'] or 0
-    
-    total_salaries = SalaryPayment.objects.filter(
-        user=instance.user
-    ).aggregate(total=Sum('total_amount'))['total'] or 0
-    
-    profile.balance = total_attendance + total_adjustments + total_reimbursements + total_salaries
-    profile.save()
+    try:
+        profile = instance.user.profile
+        
+        # Recalculate total from all sources
+        total_attendance = AttendanceRecord.objects.filter(
+            user=instance.user, 
+            is_paid=False
+        ).aggregate(total=Sum('amount_paid'))['total'] or 0
+        
+        total_adjustments = BalanceAdjustment.objects.filter(
+            user=instance.user
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        total_reimbursements = ExpenseReimbursement.objects.filter(
+            user=instance.user,
+            status='approved'
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        total_salaries = SalaryPayment.objects.filter(
+            user=instance.user
+        ).aggregate(total=Sum('total_amount'))['total'] or 0
+        
+        profile.balance = total_attendance + total_adjustments + total_reimbursements + total_salaries
+        profile.save()
+    except AttributeError:
+        # Profile might not exist yet, skip
+        pass
 
 
 # ========== SIGNAL FOR EVENTS MANAGER GROUP ==========
