@@ -158,7 +158,8 @@ def user_login(request):
 def dashboard(request):
     user = request.user
     today = timezone.now().date()
-    profile = Profile.objects.get(user=user)
+    # Use get_or_create to safely get or create profile
+    profile, created = Profile.objects.get_or_create(user=user)
 
     # Fetch today's attendance with select_related for event
     try:
@@ -258,7 +259,10 @@ def view_attendance(request):
 def mark_attendance(request):
     today = timezone.now().date()
     user = request.user
-    profile = user.profile
+    try:
+        profile = user.profile
+    except AttributeError:
+        profile = Profile.objects.create(user=user)
 
     # Check if record exists for today - limit to once per day
     try:
@@ -326,7 +330,12 @@ def edit_attendance(request, record_id):
             return redirect('view_attendance')
 
         # Store the old amount earned based on employment type
-        employment_type = request.user.profile.employment_type
+        try:
+            employment_type = request.user.profile.employment_type
+        except AttributeError:
+            # Profile doesn't exist, create it
+            profile, created = Profile.objects.get_or_create(user=request.user)
+            employment_type = profile.employment_type
         if employment_type == 'salaried':
             old_earned = record.overtime_hours * 100
         else:
