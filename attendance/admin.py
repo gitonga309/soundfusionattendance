@@ -667,6 +667,7 @@ class CustomUserAdmin(admin.ModelAdmin):
     )
     
     readonly_fields = ('last_login', 'date_joined')
+    filter_horizontal = ('groups',)
 
     def get_groups(self, obj):
         """Display user's groups"""
