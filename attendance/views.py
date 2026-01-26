@@ -1,16 +1,27 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
-from .forms import UserRegisterForm, AttendanceForm, EventForm, ExpenseReimbursementForm, EmploymentTypeForm
+from .forms import UserRegisterForm, AttendanceForm, EventForm, ExpenseReimbursementForm, EmploymentTypeForm, SalariedEmployeeRegistrationForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from .models import AttendanceRecord, Profile, Event, BalanceAdjustment, ExpenseReimbursement, EmployeeOnboarding
 from django.utils import timezone
 from django.db.models import Sum
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+import json
+import datetime
 
 def home(request):
     """Landing page"""
     return render(request, 'attendance/home.html')
+
+@require_http_methods(["GET"])
+def get_events(request):
+    """API endpoint to fetch all events as JSON for autocomplete"""
+    events = Event.objects.all().order_by('-date').values('id', 'name', 'date')
+    events_list = list(events)
+    return JsonResponse({'events': events_list})
 
 def employment_type_selection(request):
     """First step: Choose employment type"""
@@ -32,21 +43,23 @@ def register(request):
     if not employment_type:
         return redirect('employment_type_selection')
     
+    # Use appropriate form based on employment type
+    FormClass = SalariedEmployeeRegistrationForm if employment_type == 'salaried' else UserRegisterForm
+    
     if request.method == 'POST':
-        form = UserRegisterForm(request.POST)
+        form = FormClass(request.POST, request.FILES)
         if form.is_valid():
             user = form.save(commit=False)
             user.save()
             
-            # Get or create Profile (signal also creates it, so use get_or_create)
+            # Get or create Profile
             profile, created = Profile.objects.get_or_create(
                 user=user,
                 defaults={
                     'phone_number': form.cleaned_data.get('phone_number'),
                     'email': form.cleaned_data.get('email'),
-                    'date_of_birth': form.cleaned_data.get('date_of_birth'),
-                    'disability': form.cleaned_data.get('disability'),
-                    'employment_type': employment_type
+                    'employment_type': employment_type,
+                    'date_of_birth': form.cleaned_data.get('date_of_birth') if employment_type == 'salaried' else None,
                 }
             )
             
@@ -54,33 +67,50 @@ def register(request):
             if not created:
                 profile.phone_number = form.cleaned_data.get('phone_number')
                 profile.email = form.cleaned_data.get('email')
-                profile.date_of_birth = form.cleaned_data.get('date_of_birth')
-                profile.disability = form.cleaned_data.get('disability')
                 profile.employment_type = employment_type
+                if employment_type == 'salaried':
+                    profile.date_of_birth = form.cleaned_data.get('date_of_birth')
+                    profile.job_role = form.cleaned_data.get('job_role')
+                    profile.monthly_salary = form.cleaned_data.get('monthly_salary')
                 profile.save()
+            else:
+                # Update salaried fields if applicable
+                if employment_type == 'salaried':
+                    profile.job_role = form.cleaned_data.get('job_role')
+                    profile.monthly_salary = form.cleaned_data.get('monthly_salary')
+                    profile.save()
             
-            # If salaried, redirect to onboarding
+            # If salaried, create onboarding record with all details
             if employment_type == 'salaried':
-                # Create pending onboarding record
-                EmployeeOnboarding.objects.create(
+                onboarding = EmployeeOnboarding.objects.create(
                     user=user,
-                    first_name=user.first_name or user.username,
-                    last_name=user.last_name or '',
+                    first_name=form.cleaned_data.get('first_name'),
+                    last_name=form.cleaned_data.get('last_name'),
                     email=user.email,
                     phone_number=profile.phone_number,
+                    job_role=form.cleaned_data.get('job_role'),
+                    monthly_salary=form.cleaned_data.get('monthly_salary'),
+                    date_of_birth=form.cleaned_data.get('date_of_birth'),
+                    national_id=form.cleaned_data.get('national_id'),
+                    bank_account=form.cleaned_data.get('bank_account'),
+                    id_photo=request.FILES.get('id_photo'),
+                    bank_details=request.FILES.get('bank_details'),
                     status='pending'
                 )
-                messages.success(request, "Account created! Please fill in your employment details.")
-                return redirect('complete_onboarding')
+                messages.success(request, "Account created successfully! Your employment details are pending admin approval. You will be notified once reviewed.")
+                # Clear session
+                if 'employment_type' in request.session:
+                    del request.session['employment_type']
+                return redirect('login')
             else:
-                # Casual laborer - direct to dashboard
+                # Casual laborer - direct to login
                 messages.success(request, "Account created successfully! Please log in.")
                 # Clear session
                 if 'employment_type' in request.session:
                     del request.session['employment_type']
                 return redirect('login')
     else:
-        form = UserRegisterForm()
+        form = FormClass()
     
     context = {
         'form': form,
@@ -91,43 +121,50 @@ def register(request):
 
 @login_required
 def complete_onboarding(request):
-    """Complete salaried employee onboarding"""
+    """Complete salaried employee onboarding - now employees can self-onboard"""
     try:
         onboarding = EmployeeOnboarding.objects.get(user=request.user)
     except EmployeeOnboarding.DoesNotExist:
-        messages.warning(request, "No onboarding application found.")
-        return redirect('dashboard')
+        # Create a new onboarding record for the user
+        onboarding = EmployeeOnboarding(
+            user=request.user,
+            first_name=request.user.first_name or request.user.username,
+            last_name=request.user.last_name or '',
+            email=request.user.email,
+            phone_number=request.user.profile.phone_number if hasattr(request.user, 'profile') else '',
+            status='pending'
+        )
+        onboarding.save()
     
-    # Check if already completed
-    if onboarding.status == 'completed':
-        messages.info(request, "Your onboarding has already been approved!")
-        return redirect('dashboard')
-    elif onboarding.status == 'rejected':
-        messages.error(request, f"Your application was rejected: {onboarding.rejection_reason}")
-        return redirect('dashboard')
+    # Don't block if status is completed/rejected, allow re-submission
+    if onboarding.status == 'rejected':
+        # Allow resubmission after rejection
+        pass
+    
+    from .forms import EmployeeOnboardingForm
     
     if request.method == 'POST':
-        onboarding.first_name = request.POST.get('first_name', onboarding.first_name)
-        onboarding.last_name = request.POST.get('last_name', onboarding.last_name)
-        onboarding.job_role = request.POST.get('job_role')
-        onboarding.monthly_salary = request.POST.get('monthly_salary')
-        onboarding.date_of_birth = request.POST.get('date_of_birth') or onboarding.date_of_birth
-        onboarding.national_id = request.POST.get('national_id')
-        onboarding.bank_account = request.POST.get('bank_account')
-        
-        # Handle file uploads
-        if 'id_photo' in request.FILES:
-            onboarding.id_photo = request.FILES['id_photo']
-        if 'bank_details' in request.FILES:
-            onboarding.bank_details = request.FILES['bank_details']
-        
-        onboarding.status = 'pending'
-        onboarding.save()
-        
-        messages.success(request, "Application submitted! We will review it and get back to you shortly.")
-        return redirect('onboarding_status')
+        form = EmployeeOnboardingForm(request.POST, request.FILES, instance=onboarding)
+        if form.is_valid():
+            onboarding = form.save(commit=False)
+            onboarding.user = request.user
+            onboarding.email = request.user.email
+            onboarding.status = 'pending'
+            onboarding.save()
+            
+            # Update user's profile with the employment details
+            profile = request.user.profile
+            profile.job_role = onboarding.job_role
+            profile.monthly_salary = onboarding.monthly_salary
+            profile.date_of_birth = onboarding.date_of_birth
+            profile.save()
+            
+            messages.success(request, "Your onboarding application has been submitted! We will review it and get back to you shortly.")
+            return redirect('onboarding_status')
+    else:
+        form = EmployeeOnboardingForm(instance=onboarding)
     
-    return render(request, 'attendance/complete_onboarding.html', {'onboarding': onboarding})
+    return render(request, 'attendance/complete_onboarding.html', {'form': form, 'onboarding': onboarding})
 
 @login_required
 def onboarding_status(request):
@@ -141,25 +178,58 @@ def onboarding_status(request):
 
 def user_login(request):
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        
+        # Validate input
+        if not username or not password:
+            messages.error(request, "Please enter both username and password.")
+            return render(request, 'attendance/login.html')
+        
+        # Check if username exists
+        from django.contrib.auth.models import User
+        try:
+            user_obj = User.objects.get(username=username)
+            
+            # Check if account is active
+            if not user_obj.is_active:
+                messages.error(request, "Your account is inactive. Please contact the administrator for assistance.")
+                return render(request, 'attendance/login.html')
+            
+        except User.DoesNotExist:
+            messages.error(request, f"Username '{username}' not found. Please check your username and try again or create a new account.")
+            return render(request, 'attendance/login.html')
+        
+        # Try to authenticate
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            login(request, user)
-            messages.success(request, "Welcome back!")
-            return redirect('dashboard')
+            # Check if user is active (redundant but safe)
+            if user.is_active:
+                login(request, user)
+                messages.success(request, f"Welcome back, {user.username}!")
+                return redirect('dashboard')
+            else:
+                messages.error(request, "Your account is inactive. Please contact the administrator.")
+                return render(request, 'attendance/login.html')
         else:
-            messages.error(request, "Invalid username or password")
+            # Authentication failed - likely wrong password
+            messages.error(request, "Incorrect password. Please try again. If you forgot your password, please contact the administrator.")
+            return render(request, 'attendance/login.html')
 
     return render(request, 'attendance/login.html')
 
 @login_required
 def dashboard(request):
+    from .models import PaymentRecord
+    
     user = request.user
     today = timezone.now().date()
     # Use get_or_create to safely get or create profile
     profile, created = Profile.objects.get_or_create(user=user)
+    
+    # Refresh profile from database to ensure we have latest balance
+    profile.refresh_from_db()
 
     # Fetch today's attendance with select_related for event
     try:
@@ -177,6 +247,52 @@ def dashboard(request):
     
     # Get last 5 balance adjustments made by admin
     recent_adjustments = BalanceAdjustment.objects.filter(user=user).order_by('-date')[:5]
+    
+    # Get last 5 balance adjustments (comprehensive change log)
+    balance_changes = recent_adjustments
+    
+    # Get recent payments marked by user
+    payment_records = PaymentRecord.objects.filter(user=user).order_by('-payment_date')[:5]
+    
+    # Combine and sort all activities by date (most recent first)
+    all_activities = []
+    
+    # Add attendance records
+    for record in recent_records:
+        # Combine date and check_in_time to create a proper datetime
+        record_datetime = datetime.datetime.combine(record.date, record.check_in_time)
+        # Make it timezone aware in the app's timezone
+        record_datetime = timezone.make_aware(record_datetime, timezone=timezone.get_current_timezone())
+        all_activities.append({
+            'type': 'attendance',
+            'date': record.date,
+            'datetime': record_datetime,
+            'object': record
+        })
+    
+    # Add balance adjustments
+    for adjustment in recent_adjustments:
+        all_activities.append({
+            'type': 'adjustment',
+            'date': adjustment.date,
+            'datetime': adjustment.date,
+            'object': adjustment
+        })
+    
+    # Add payment records
+    for payment in payment_records:
+        all_activities.append({
+            'type': 'payment',
+            'date': payment.payment_date,
+            'datetime': payment.payment_date,
+            'object': payment
+        })
+    
+    # Sort all activities by datetime, most recent first
+    all_activities.sort(key=lambda x: x['datetime'], reverse=True)
+    
+    # Keep only the top 10 most recent activities
+    all_activities = all_activities[:10]
 
     # For salaried employees, show salary information
     # Check if employee has completed onboarding with status "accepted" or higher
@@ -215,6 +331,9 @@ def dashboard(request):
         'total_balance': total_balance,
         'recent_records': recent_records,
         'recent_adjustments': recent_adjustments,
+        'balance_changes': balance_changes,
+        'payment_records': payment_records,
+        'all_activities': all_activities,
         'salary_info': salary_info,
     }
 
@@ -273,33 +392,84 @@ def mark_attendance(request):
         record = AttendanceRecord(user=user, date=today)
 
     if request.method == "POST":
-        form = AttendanceForm(request.POST, instance=record)
-        if form.is_valid():
-            record = form.save(commit=False)
+        # Handle event selection - either from dropdown or custom name
+        event_fk_input = request.POST.get('event_fk', '').strip()
+        event_name_input = request.POST.get('event_name', '').strip()
+        
+        # Validate and set event
+        if event_name_input:
+            # User typed a custom event name
+            event, _ = Event.objects.get_or_create(
+                name=event_name_input,
+                date=today,
+                defaults={'location': 'Custom Event', 'description': 'User-entered event'}
+            )
+            record.event_fk = event
+        elif event_fk_input:
+            # User selected from dropdown
+            try:
+                record.event_fk = Event.objects.get(pk=int(event_fk_input))
+            except (Event.DoesNotExist, ValueError):
+                messages.error(request, "Invalid event selected")
+                return render(request, 'attendance/mark_attendance.html', {
+                    'form': AttendanceForm(instance=record), 
+                    'record': record,
+                    'today': today
+                })
+        else:
+            messages.error(request, "Please select or type an event name")
+            return render(request, 'attendance/mark_attendance.html', {
+                'form': AttendanceForm(instance=record), 
+                'record': record,
+                'today': today
+            })
+        
+        # Validate overtime_hours
+        try:
+            overtime_hours = int(request.POST.get('overtime_hours', 0))
+            if overtime_hours < 0:
+                messages.error(request, "Overtime hours cannot be negative")
+                return render(request, 'attendance/mark_attendance.html', {
+                    'form': AttendanceForm(instance=record), 
+                    'record': record,
+                    'today': today
+                })
+        except (ValueError, TypeError):
+            messages.error(request, "Overtime hours must be a valid number")
+            return render(request, 'attendance/mark_attendance.html', {
+                'form': AttendanceForm(instance=record), 
+                'record': record,
+                'today': today
+            })
+        
+        # All validation passed, save the record
+        record.overtime_hours = overtime_hours
             
-            # Force today's date and capture current time correctly using django timezone
-            record.date = today
-            # Get current time with timezone awareness
-            current_time = timezone.now()
-            record.check_in_time = current_time.time()
-            
-            # Calculate amount_paid based on employment type
-            # Salaried: Only overtime (no 1000 KSH base)
-            # Hourly: Base 1000 KSH + overtime
-            if profile.employment_type == 'salaried':
-                # Salaried: Only overtime amount
-                record.amount_paid = record.overtime_hours * 100
-            else:
-                # Hourly: Base + overtime
-                record.amount_paid = 1000 + (record.overtime_hours * 100)
-            
-            # Store original overtime hours on first creation
-            record.original_overtime_hours = record.overtime_hours
-            
-            record.save()
-            
-            messages.success(request, "Attendance marked successfully!")
-            return redirect('dashboard')
+        # Force today's date and capture current time correctly using django timezone
+        record.date = today
+        # Get current time with timezone awareness and convert to local timezone
+        current_time_aware = timezone.now()
+        # Convert to the configured timezone to ensure correct time
+        current_time_local = current_time_aware.astimezone(timezone.get_current_timezone())
+        record.check_in_time = current_time_local.time()
+        
+        # Calculate amount_paid based on employment type
+        # Salaried: Only overtime (no 1000 KSH base)
+        # Hourly: Base 1000 KSH + overtime
+        if profile.employment_type == 'salaried':
+            # Salaried: Only overtime amount
+            record.amount_paid = record.overtime_hours * 100
+        else:
+            # Hourly: Base + overtime
+            record.amount_paid = 1000 + (record.overtime_hours * 100)
+        
+        # Store original overtime hours on first creation
+        record.original_overtime_hours = record.overtime_hours
+        
+        record.save()
+        
+        messages.success(request, "Attendance marked successfully!")
+        return redirect('dashboard')
     else:
         form = AttendanceForm(instance=record)
 
@@ -321,12 +491,33 @@ def edit_attendance(request, record_id):
     if request.method == 'POST':
         # Get new overtime from form
         overtime_hours = request.POST.get('overtime_hours')
-        event_id = request.POST.get('event_fk')
+        event_fk_input = request.POST.get('event_fk', '').strip()
+        event_name_input = request.POST.get('event_name', '').strip()
         
         try:
             overtime_hours = int(overtime_hours)
         except (ValueError, TypeError):
             messages.error(request, "Overtime must be a valid number")
+            return redirect('view_attendance')
+        
+        # Validate and set event
+        if event_name_input:
+            # User typed a custom event name
+            event, _ = Event.objects.get_or_create(
+                name=event_name_input,
+                date=record.date,
+                defaults={'location': 'Custom Event', 'description': 'User-entered event'}
+            )
+            record.event_fk = event
+        elif event_fk_input:
+            # User selected from dropdown
+            try:
+                record.event_fk = Event.objects.get(pk=int(event_fk_input))
+            except (Event.DoesNotExist, ValueError):
+                messages.error(request, "Invalid event selected")
+                return redirect('view_attendance')
+        else:
+            messages.error(request, "Please select or type an event name")
             return redirect('view_attendance')
 
         # Store the old amount earned based on employment type
@@ -334,21 +525,15 @@ def edit_attendance(request, record_id):
             employment_type = request.user.profile.employment_type
         except AttributeError:
             # Profile doesn't exist, create it
-            profile, created = Profile.objects.get_or_create(user=request.user)
+            profile, _ = Profile.objects.get_or_create(user=request.user)
             employment_type = profile.employment_type
         if employment_type == 'salaried':
             old_earned = record.overtime_hours * 100
         else:
             old_earned = 1000 + (record.overtime_hours * 100)
         
-        # Update record with new overtime and event
+        # Update record with new overtime
         record.overtime_hours = overtime_hours
-        if event_id:
-            try:
-                record.event_fk = Event.objects.get(pk=event_id)
-            except Event.DoesNotExist:
-                messages.error(request, "Selected event does not exist")
-                return redirect('view_attendance')
         
         # Calculate NEW earned amount based on employment type
         if employment_type == 'salaried':
@@ -637,20 +822,48 @@ def view_reimbursements(request):
 
 @login_required
 @user_passes_test(is_admin)
+@require_http_methods(["GET", "POST"])
 def admin_reimbursements(request):
     """Admin dashboard to review and approve/reject reimbursements"""
-    # Get pending reimbursements
-    pending_reimbursements = ExpenseReimbursement.objects.filter(status='pending').select_related('user', 'event').order_by('-requested_at')
-    approved_reimbursements = ExpenseReimbursement.objects.filter(status='approved').select_related('user', 'event').order_by('-approved_at')
-    rejected_reimbursements = ExpenseReimbursement.objects.filter(status='rejected').select_related('user', 'event').order_by('-requested_at')
+    # Handle bulk updates from form submission
+    if request.method == 'POST' and request.content_type == 'application/json':
+        try:
+            data = json.loads(request.body)
+            changes = data.get('changes', [])
+            
+            for change in changes:
+                try:
+                    reimbursement = ExpenseReimbursement.objects.get(pk=change['id'])
+                    new_status = change.get('status', reimbursement.status)
+                    new_is_paid = change.get('is_paid', reimbursement.is_paid)
+                    
+                    # Update status if it changed
+                    if new_status != reimbursement.status:
+                        reimbursement.status = new_status
+                        if new_status == 'approved' and not reimbursement.approved_by:
+                            reimbursement.approved_by = request.user
+                            reimbursement.approved_at = timezone.now()
+                        elif new_status == 'rejected' and not reimbursement.rejected_by:
+                            reimbursement.rejected_by = request.user
+                            reimbursement.rejected_at = timezone.now()
+                    
+                    # Update paid status if changed
+                    if new_is_paid != reimbursement.is_paid:
+                        reimbursement.is_paid = new_is_paid
+                    
+                    reimbursement.save()
+                except ExpenseReimbursement.DoesNotExist:
+                    pass
+            
+            return JsonResponse({'success': True, 'message': 'All changes saved successfully!'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    # Get all reimbursements ordered by status and date
+    all_reimbursements = ExpenseReimbursement.objects.select_related('user', 'event').order_by('-requested_at')
     
     context = {
-        'pending_reimbursements': pending_reimbursements,
-        'approved_reimbursements': approved_reimbursements,
-        'rejected_reimbursements': rejected_reimbursements,
-        'pending_count': pending_reimbursements.count(),
-        'approved_count': approved_reimbursements.count(),
-        'rejected_count': rejected_reimbursements.count(),
+        'all_reimbursements': all_reimbursements,
     }
     return render(request, 'attendance/admin_reimbursements.html', context)
 
@@ -691,3 +904,132 @@ def reject_reimbursement(request, reimbursement_id):
     
     context = {'reimbursement': reimbursement, 'action': 'reject'}
     return render(request, 'attendance/reject_reimbursement.html', context)
+
+
+
+
+@login_required
+def mark_payment(request):
+    """Mark payment from user balance"""
+    from .models import PaymentRecord
+    
+    user = request.user
+    profile, created = Profile.objects.get_or_create(user=user)
+    
+    if request.method == 'POST':
+        amount = request.POST.get('amount')
+        payment_method = request.POST.get('payment_method', 'bank_transfer')
+        
+        try:
+            amount = float(amount)
+            if amount <= 0:
+                messages.error(request, "Payment amount must be greater than 0.")
+                return redirect('dashboard')
+            
+            if amount > profile.balance:
+                messages.error(request, f"Payment amount cannot exceed your current balance of KSH {profile.balance}.")
+                return redirect('dashboard')
+            
+            # Record the payment
+            payment = PaymentRecord.objects.create(
+                user=user,
+                amount=amount,
+                payment_method=payment_method
+            )
+            
+            # Update user balance
+            old_balance = profile.balance
+            profile.balance = float(profile.balance) - amount
+            profile.save()
+            
+            # Refresh from database to confirm save
+            profile.refresh_from_db()
+            
+            # Track balance adjustment
+            BalanceAdjustment.objects.create(
+                user=user,
+                reason=f"Payment marked: {payment_method.replace('_', ' ').title()} - KSH {amount}",
+                amount=-amount,
+                adjusted_by=user
+            )
+            
+            messages.success(request, f"Payment of KSH {amount} has been marked successfully. Your new balance is KSH {profile.balance}.")
+        except (ValueError, TypeError) as e:
+            messages.error(request, "Invalid payment amount.")
+        
+        return redirect('dashboard')
+    
+    return render(request, 'attendance/mark_payment.html', {'profile': profile})
+
+
+@login_required
+@user_passes_test(is_admin)
+def view_user_attendance_history(request, user_id):
+    """Admin view to see all attendance records and changes for a specific user"""
+    
+    target_user = get_object_or_404(User, pk=user_id)
+    
+    # Get all attendance records for this user
+    attendance_records = AttendanceRecord.objects.filter(user=target_user).select_related('event_fk').order_by('-date')
+    
+    # Get all balance adjustments for this user
+    balance_changes = BalanceAdjustment.objects.filter(user=target_user).select_related('adjusted_by').order_by('-date')
+    
+    # Get profile info
+    profile = target_user.profile
+    
+    context = {
+        'target_user': target_user,
+        'attendance_records': attendance_records,
+        'balance_changes': balance_changes,
+        'profile': profile,
+    }
+    
+    return render(request, 'attendance/admin_user_attendance_history.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def reimbursement_action(request, reimbursement_id):
+    """Handle reimbursement approval/rejection via AJAX or direct request"""
+    from django.http import JsonResponse
+    
+    reimbursement = get_object_or_404(ExpenseReimbursement, pk=reimbursement_id)
+    action = request.POST.get('action') or request.GET.get('action')
+    
+    if not action:
+        return JsonResponse({'error': 'No action specified'}, status=400)
+    
+    if action == 'approve':
+        reimbursement.status = 'approved'
+        reimbursement.approved_by = request.user
+        reimbursement.approved_at = timezone.now()
+        reimbursement.save()
+        
+        # Note: Reimbursements are refunds and do not affect user balance
+        message = f"Reimbursement for {reimbursement.user.username} approved!"
+        status_msg = "approved"
+        
+    elif action == 'reject':
+        rejection_reason = request.POST.get('rejection_reason', '')
+        reimbursement.status = 'rejected'
+        reimbursement.rejection_reason = rejection_reason
+        reimbursement.save()
+        
+        message = f"Reimbursement for {reimbursement.user.username} rejected."
+        status_msg = "rejected"
+    
+    else:
+        return JsonResponse({'error': 'Invalid action'}, status=400)
+    
+    # Check if it's an AJAX request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'status': status_msg,
+            'reimbursement_id': reimbursement_id
+        })
+    
+    messages.success(request, message)
+    return redirect('admin_reimbursements')

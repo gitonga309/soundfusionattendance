@@ -327,8 +327,8 @@
     </div>
 
     <div class="card">
-      <h2><i class="fas fa-history"></i> Recent Activity (Attendance & Admin Changes)</h2>
-      {% if recent_records or recent_adjustments %}
+      <h2><i class="fas fa-history"></i> Recent Activity (Attendance & Admin Changes & Payments)</h2>
+      {% if all_activities %}
         <table class="adjustments-table">
           <thead>
             <tr>
@@ -339,29 +339,39 @@
             </tr>
           </thead>
           <tbody>
-            {% for record in recent_records %}
-            <tr>
-              <td>{{ record.date|date:"M d, Y" }}</td>
-              <td><span class="badge">Attendance</span></td>
-              <td>{{ record.event_fk.name|default:"Not specified" }} - {{ record.overtime_hours }} hrs OT</td>
-              <td>
-                <span class="amount-positive">+KSH {{ record.amount_paid }}</span>
-              </td>
-            </tr>
-            {% endfor %}
-            {% for adjustment in recent_adjustments %}
-            <tr>
-              <td>{{ adjustment.date|date:"M d, Y - H:i" }}</td>
-              <td><span class="badge" style="background: #ffe8e8; color: #c0392b;">Admin Change</span></td>
-              <td>{{ adjustment.reason }}</td>
-              <td>
-                {% if adjustment.amount >= 0 %}
-                  <span class="amount-positive">+KSH {{ adjustment.amount }}</span>
-                {% else %}
-                  <span class="amount-negative">KSH {{ adjustment.amount }}</span>
-                {% endif %}
-              </td>
-            </tr>
+            {% for activity in all_activities %}
+              {% if activity.type == 'attendance' %}
+              <tr>
+                <td>{{ activity.object.date|date:"M d, Y" }} <br><small>{{ activity.object.check_in_time|time:"H:i" }}</small></td>
+                <td><span class="badge">Attendance</span></td>
+                <td>{{ activity.object.event_fk.name|default:"Not specified" }} - {{ activity.object.overtime_hours }} hrs OT</td>
+                <td>
+                  <span class="amount-positive">+KSH {{ activity.object.amount_paid }}</span>
+                </td>
+              </tr>
+              {% elif activity.type == 'adjustment' %}
+              <tr>
+                <td>{{ activity.object.date|date:"M d, Y - H:i" }}</td>
+                <td><span class="badge" style="background: #ffe8e8; color: #c0392b;">Admin Change</span></td>
+                <td>{{ activity.object.reason }}</td>
+                <td>
+                  {% if activity.object.amount >= 0 %}
+                    <span class="amount-positive">+KSH {{ activity.object.amount }}</span>
+                  {% else %}
+                    <span class="amount-negative">KSH {{ activity.object.amount }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% elif activity.type == 'payment' %}
+              <tr>
+                <td>{{ activity.object.payment_date|date:"M d, Y - H:i" }}</td>
+                <td><span class="badge" style="background: #fef3cd; color: #856404;">Payment</span></td>
+                <td>{{ user.username }} marked payment via {{ activity.object.payment_method|title }}</td>
+                <td>
+                  <span class="amount-negative">-KSH {{ activity.object.amount }}</span>
+                </td>
+              </tr>
+              {% endif %}
             {% endfor %}
           </tbody>
         </table>
@@ -373,12 +383,53 @@
       {% endif %}
     </div>
 
+    <div class="card">
+      <h2><i class="fas fa-money-bill-wave"></i> Payment Tracking</h2>
+      <div style="margin-bottom: 2rem;">
+        <p style="color: #666; margin-bottom: 1rem;">Record payments you've made towards your balance.</p>
+        <a href="{% url 'mark_payment' %}" style="display: inline-block; padding: 0.8rem 1.5rem; background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 6px 20px rgba(46, 204, 113, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)';">
+          <i class="fas fa-plus-circle"></i> Mark Payment
+        </a>
+      </div>
+      
+      {% if payment_records %}
+      <table class="adjustments-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount Paid</th>
+            <th>Description</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in payment_records %}
+          <tr>
+            <td>{{ payment.payment_date|date:"M d, Y - H:i" }}</td>
+            <td><span class="amount-positive">KSH {{ payment.amount }}</span></td>
+            <td>{{ payment.description|default:"Payment" }}</td>
+            <td><span class="badge" style="background: #e8f8f5; color: #0d2818;">Recorded</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <p>No payments recorded yet. Click "Mark Payment" to record a payment.</p>
+      </div>
+      {% endif %}
+    </div>
+
     <div class="links">
       <a href="{% url 'mark_attendance' %}">
         <i class="fas fa-clipboard-check"></i> Mark Attendance
       </a>
       <a href="{% url 'view_attendance' %}">
         <i class="fas fa-list"></i> View Records
+      </a>
+      <a href="{% url 'mark_payment' %}">
+        <i class="fas fa-money-bill-wave"></i> Mark Payment
       </a>
       <a href="{% url 'submit_reimbursement' %}">
         <i class="fas fa-plus-circle"></i> Request Reimbursement

@@ -59,12 +59,12 @@ def save_user_profile(sender, instance, **kwargs):
 
 class AttendanceRecord(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    date = models.DateField(default=timezone.now)
-    check_in_time = models.TimeField(default=timezone.now)
+    date = models.DateField(default=lambda: timezone.now().astimezone(timezone.get_current_timezone()).date())
+    check_in_time = models.TimeField(default=lambda: timezone.now().astimezone(timezone.get_current_timezone()).time())
     event_fk = models.ForeignKey('Event', on_delete=models.SET_NULL, null=True, blank=True, related_name='attendance_records')
     overtime_hours = models.PositiveIntegerField(default=0)
     is_paid = models.BooleanField(default=False)
-    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0.0, verbose_name="Amount")
     admin_adjustment = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     overtime_edited = models.BooleanField(default=False)
     original_overtime_hours = models.PositiveIntegerField(default=0)
@@ -212,6 +212,7 @@ class ExpenseReimbursement(models.Model):
     description = models.TextField(blank=True, help_text="Explain the expense")
     receipt_photo = models.ImageField(upload_to='receipts/', null=True, blank=True, help_text="Upload receipt/proof (optional)")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    is_paid = models.BooleanField(default=False, verbose_name="Paid")
     
     requested_at = models.DateTimeField(auto_now_add=True)
     approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_reimbursements')
@@ -227,31 +228,9 @@ class ExpenseReimbursement(models.Model):
 
 @receiver(post_save, sender='attendance.ExpenseReimbursement')
 def update_balance_on_reimbursement_approval(sender, instance, **kwargs):
-    """When an expense reimbursement is approved, add it to the user's balance"""
-    if instance.status == 'approved' and instance.approved_at:
-        try:
-            # Update user profile balance
-            profile = instance.user.profile
-            # Recalculate total from all unpaid records + adjustments + approved reimbursements
-            total_attendance = AttendanceRecord.objects.filter(
-                user=instance.user, 
-                is_paid=False
-            ).aggregate(total=Sum('amount_paid'))['total'] or 0
-            
-            total_adjustments = BalanceAdjustment.objects.filter(
-                user=instance.user
-            ).aggregate(total=Sum('amount'))['total'] or 0
-            
-            total_reimbursements = ExpenseReimbursement.objects.filter(
-                user=instance.user,
-                status='approved'
-            ).aggregate(total=Sum('amount'))['total'] or 0
-            
-            profile.balance = total_attendance + total_adjustments + total_reimbursements
-            profile.save()
-        except AttributeError:
-            # Profile might not exist yet, skip
-            pass
+    """Reimbursements are refunds and do not affect user balance"""
+    # Reimbursements are for refunding money to employees and should not increase their balance
+    pass
 
 
 class SalaryPayment(models.Model):
@@ -292,16 +271,12 @@ def update_balance_on_salary_payment(sender, instance, **kwargs):
             user=instance.user
         ).aggregate(total=Sum('amount'))['total'] or 0
         
-        total_reimbursements = ExpenseReimbursement.objects.filter(
-            user=instance.user,
-            status='approved'
-        ).aggregate(total=Sum('amount'))['total'] or 0
-        
         total_salaries = SalaryPayment.objects.filter(
             user=instance.user
         ).aggregate(total=Sum('total_amount'))['total'] or 0
         
-        profile.balance = total_attendance + total_adjustments + total_reimbursements + total_salaries
+        # Note: Reimbursements are refunds and should not be included in balance
+        profile.balance = total_attendance + total_adjustments + total_salaries
         profile.save()
     except AttributeError:
         # Profile might not exist yet, skip
@@ -386,3 +361,29 @@ class EmployeeOnboarding(models.Model):
     
     def __str__(self):
         return f"Onboarding - {self.first_name} {self.last_name} ({self.get_status_display()})"
+
+
+class PaymentRecord(models.Model):
+    """Track when users mark payments/withdrawals from their balance"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payment_records')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField(auto_now_add=True)
+    payment_method = models.CharField(
+        max_length=50,
+        choices=(
+            ('bank_transfer', 'Bank Transfer'),
+            ('cash', 'Cash'),
+            ('mpesa', 'M-Pesa'),
+            ('other', 'Other'),
+        ),
+        default='bank_transfer'
+    )
+    reference_number = models.CharField(max_length=100, blank=True, help_text="Transaction/reference number")
+    notes = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - KSH {self.amount} - {self.payment_date.strftime('%Y-%m-%d')}"
+    
+    class Meta:
+        ordering = ['-payment_date']
+

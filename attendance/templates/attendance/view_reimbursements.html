@@ -226,6 +226,26 @@
       margin-top: 1rem;
     }
 
+    .paid-badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .not-paid-badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      background: #fff3cd;
+      color: #856404;
+    }
+
     .empty-state {
       text-align: center;
       padding: 3rem;
@@ -332,6 +352,17 @@
           <div class="detail-item">
             <div class="detail-label">Amount</div>
             <div class="detail-value amount">KSH {{ reimbursement.amount }}</div>
+          </div>
+
+          <div class="detail-item">
+            <div class="detail-label">Payment Status</div>
+            <div class="detail-value">
+              {% if reimbursement.is_paid %}
+                <span class="paid-badge"><i class="fas fa-check-circle"></i> Paid</span>
+              {% else %}
+                <span class="not-paid-badge"><i class="fas fa-clock"></i> Not Paid</span>
+              {% endif %}
+            </div>
           </div>
         </div>
 

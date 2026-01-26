@@ -56,238 +56,114 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 2rem auto;
       padding: 0 2rem;
     }
 
-    .tab-container {
+    .table-container {
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-
-    .tabs {
-      display: flex;
-      background: #f9f9f9;
-      border-bottom: 2px solid #e0e0e0;
-    }
-
-    .tab-button {
-      flex: 1;
-      padding: 1.2rem;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 600;
-      color: #666;
-      transition: all 0.3s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      border-bottom: 3px solid transparent;
-    }
-
-    .tab-button:hover {
-      background: #f0f0f0;
-    }
-
-    .tab-button.active {
-      color: #2ecc71;
-      border-bottom-color: #2ecc71;
-      background: #f0fdf4;
-    }
-
-    .tab-count {
-      background: #2ecc71;
-      color: #0d2818;
-      padding: 0.3rem 0.7rem;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 700;
-    }
-
-    .tab-button.active .tab-count {
-      background: #0d2818;
-      color: #2ecc71;
-    }
-
-    .tab-content {
-      display: none;
+      overflow-x: auto;
       padding: 2rem;
     }
 
-    .tab-content.active {
-      display: block;
+    table {
+      width: 100%;
+      border-collapse: collapse;
     }
 
-    .reimbursement-item {
-      background: #f9f9f9;
-      border-left: 4px solid #2ecc71;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      border-radius: 8px;
-      transition: all 0.3s;
-    }
-
-    .reimbursement-item:hover {
-      box-shadow: 0 4px 12px rgba(46, 204, 113, 0.15);
-    }
-
-    .reimbursement-item.rejected {
-      border-left-color: #c0392b;
-    }
-
-    .reimbursement-item.approved {
-      border-left-color: #27ae60;
-    }
-
-    .item-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: start;
-      margin-bottom: 1rem;
-    }
-
-    .user-info h3 {
-      color: #0d2818;
-      margin-bottom: 0.3rem;
-      font-size: 1.1rem;
-    }
-
-    .user-email {
-      color: #666;
-      font-size: 0.9rem;
-    }
-
-    .amount-badge {
-      background: #2ecc71;
-      color: #fff;
-      padding: 0.6rem 1.2rem;
-      border-radius: 6px;
-      font-weight: 700;
-      font-size: 1.1rem;
-    }
-
-    .item-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .grid-item {
-      background: #fff;
-      padding: 0.8rem;
-      border-radius: 6px;
-      border: 1px solid #e0e0e0;
-    }
-
-    .grid-label {
-      color: #999;
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-bottom: 0.3rem;
-    }
-
-    .grid-value {
-      color: #0d2818;
-      font-weight: 600;
-    }
-
-    .description-section {
-      background: #fff;
-      padding: 1rem;
-      border-radius: 6px;
-      border: 1px solid #e0e0e0;
-      margin-bottom: 1rem;
-    }
-
-    .description-label {
-      color: #999;
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-
-    .description-text {
-      color: #555;
-      font-size: 0.95rem;
-    }
-
-    .receipt-link {
-      display: inline-block;
+    table thead {
+      background: linear-gradient(135deg, #0d2818 0%, #1a3a2e 100%);
       color: #2ecc71;
-      text-decoration: none;
-      font-weight: 600;
-      margin-right: 1rem;
     }
 
-    .receipt-link:hover {
-      text-decoration: underline;
+    table th {
+      padding: 1.2rem;
+      text-align: left;
+      font-weight: 700;
+      border-bottom: 3px solid #2ecc71;
     }
 
-    .action-buttons {
-      display: flex;
-      gap: 1rem;
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid #e0e0e0;
+    table td {
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid #e0e0e0;
     }
 
-    .btn {
-      padding: 0.7rem 1.5rem;
-      border: none;
-      border-radius: 6px;
+    table tbody tr:hover {
+      background: #f9f9f9;
+    }
+
+    .status-select {
+      padding: 0.6rem;
+      border: 2px solid #ddd;
+      border-radius: 4px;
       font-weight: 600;
       cursor: pointer;
+      background: white;
       transition: all 0.3s;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.9rem;
+      width: 100%;
+      max-width: 150px;
     }
 
-    .btn-approve {
-      background: #27ae60;
-      color: #fff;
+    .status-select:hover {
+      border-color: #2ecc71;
+      box-shadow: 0 2px 8px rgba(46, 204, 113, 0.2);
     }
 
-    .btn-approve:hover {
-      background: #229954;
-      transform: translateY(-2px);
+    .status-select:focus {
+      outline: none;
+      border-color: #2ecc71;
+      box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.1);
     }
 
-    .btn-reject {
-      background: #c0392b;
-      color: #fff;
+    .status-badge {
+      display: inline-block;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 600;
     }
 
-    .btn-reject:hover {
-      background: #a93226;
-      transform: translateY(-2px);
+    .status-pending {
+      background: #fff3cd;
+      color: #856404;
     }
 
-    .approval-info {
+    .status-approved {
       background: #d4edda;
-      border-left: 4px solid #28a745;
       color: #155724;
-      padding: 1rem;
-      border-radius: 6px;
-      margin-top: 1rem;
     }
 
-    .rejection-info {
+    .status-rejected {
       background: #f8d7da;
-      border-left: 4px solid #dc3545;
       color: #721c24;
-      padding: 1rem;
+    }
+
+    .save-button-container {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 2px solid #e0e0e0;
+    }
+
+    .btn-save {
+      padding: 0.8rem 2rem;
+      background: #2ecc71;
+      color: #fff;
+      border: none;
       border-radius: 6px;
-      margin-top: 1rem;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-save:hover {
+      background: #27ae60;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
     }
 
     .empty-state {
@@ -306,32 +182,28 @@
       font-size: 1.1rem;
     }
 
+    .success-message {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+
     @media (max-width: 768px) {
-      .tabs {
-        flex-wrap: wrap;
+      .table-container {
+        padding: 1rem;
       }
 
-      .tab-button {
-        padding: 0.8rem;
+      table th, table td {
+        padding: 0.5rem;
         font-size: 0.9rem;
       }
 
-      .tab-count {
-        font-size: 0.75rem;
-      }
-
-      .item-header {
-        flex-direction: column;
-        gap: 1rem;
-      }
-
-      .action-buttons {
-        flex-direction: column;
-      }
-
-      .btn {
-        width: 100%;
-        justify-content: center;
+      .status-select {
+        max-width: 120px;
+        font-size: 0.9rem;
       }
     }
   </style>
@@ -346,21 +218,158 @@
   </div>
 
   <div class="container">
-    <div class="tab-container">
-      <div class="tabs">
-        <button class="tab-button active" data-tab="pending">
-          <i class="fas fa-hourglass-half"></i> Pending
-          <span class="tab-count">{{ pending_count }}</span>
-        </button>
-        <button class="tab-button" data-tab="approved">
-          <i class="fas fa-check-circle"></i> Approved
-          <span class="tab-count">{{ approved_count }}</span>
-        </button>
-        <button class="tab-button" data-tab="rejected">
-          <i class="fas fa-times-circle"></i> Rejected
-          <span class="tab-count">{{ rejected_count }}</span>
-        </button>
-      </div>
+    {% if messages %}
+      {% for message in messages %}
+        <div class="success-message">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="table-container">
+      <form id="reimbursement-form" method="POST">
+        {% csrf_token %}
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Event</th>
+              <th>Expense Type</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Requested At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reimbursement in all_reimbursements %}
+            <tr data-reimbursement-id="{{ reimbursement.id }}">
+              <td>
+                <strong>{{ reimbursement.user.get_full_name|default:reimbursement.user.username }}</strong><br>
+                <small>{{ reimbursement.user.email }}</small>
+              </td>
+              <td>
+                {% if reimbursement.event %}
+                  {{ reimbursement.event.name|truncatewords:3 }}
+                {% else %}
+                  <span style="color: #999;">—</span>
+                {% endif %}
+              </td>
+              <td>{{ reimbursement.get_expense_type_display }}</td>
+              <td><strong style="color: #2ecc71;">KSH {{ reimbursement.amount }}</strong></td>
+              <td>
+                <select class="status-select status-dropdown" data-reimbursement-id="{{ reimbursement.id }}" data-field="status">
+                  <option value="pending" {% if reimbursement.status == 'pending' %}selected{% endif %}>Pending</option>
+                  <option value="approved" {% if reimbursement.status == 'approved' %}selected{% endif %}>Approved</option>
+                  <option value="rejected" {% if reimbursement.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+              </td>
+              <td>
+                <select class="status-select payment-dropdown" data-reimbursement-id="{{ reimbursement.id }}" data-field="paid" {% if reimbursement.status != 'approved' %}disabled{% endif %}>
+                  <option value="unpaid" {% if not reimbursement.is_paid %}selected{% endif %}>Unpaid</option>
+                  <option value="paid" {% if reimbursement.is_paid %}selected{% endif %}>Paid</option>
+                </select>
+              </td>
+              <td>{{ reimbursement.requested_at|date:"M d, Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No reimbursement records found.</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {% if all_reimbursements %}
+        <div class="save-button-container">
+          <button type="submit" class="btn-save">
+            <i class="fas fa-save"></i> Save All Changes
+          </button>
+        </div>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Enable/disable payment dropdown based on status
+    document.querySelectorAll('.status-dropdown').forEach(select => {
+      select.addEventListener('change', function() {
+        const row = this.closest('tr');
+        const paidDropdown = row.querySelector('.payment-dropdown');
+        const status = this.value;
+
+        if (status === 'approved') {
+          paidDropdown.disabled = false;
+        } else {
+          paidDropdown.disabled = true;
+          paidDropdown.value = 'unpaid';
+        }
+      });
+    });
+
+    // Handle form submission
+    document.getElementById('reimbursement-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const changes = [];
+      document.querySelectorAll('tr[data-reimbursement-id]').forEach(row => {
+        const reimbursementId = row.getAttribute('data-reimbursement-id');
+        const statusSelect = row.querySelector('.status-dropdown');
+        const paidSelect = row.querySelector('.payment-dropdown');
+
+        if (statusSelect && paidSelect) {
+          changes.push({
+            id: reimbursementId,
+            status: statusSelect.value,
+            is_paid: paidSelect.value === 'paid'
+          });
+        }
+      });
+
+      if (changes.length === 0) {
+        alert('No changes to save');
+        return;
+      }
+
+      // Submit changes via AJAX
+      fetch('{% url "admin_reimbursements" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ changes: changes })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('All changes saved successfully!');
+          location.reload();
+        } else {
+          alert('Error: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to save changes');
+      });
+    });
+
+    // Initialize payment dropdown states
+    document.querySelectorAll('.status-dropdown').forEach(select => {
+      const row = select.closest('tr');
+      const paidDropdown = row.querySelector('.payment-dropdown');
+      if (select.value !== 'approved') {
+        paidDropdown.disabled = true;
+      }
+    });
+  </script>
+</body>
+</html>
 
       <!-- Pending Tab -->
       <div class="tab-content active" id="pending">
@@ -407,16 +416,13 @@
             </div>
             {% endif %}
 
-            <div class="action-buttons">
-              <form method="post" action="{% url 'approve_reimbursement' reimbursement.id %}" style="flex: 1;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-approve" style="width: 100%;">
-                  <i class="fas fa-check"></i> Approve
-                </button>
-              </form>
-              <a href="{% url 'reject_reimbursement' reimbursement.id %}" class="btn btn-reject" style="flex: 1; justify-content: center;">
-                <i class="fas fa-times"></i> Reject
-              </a>
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #666;">Action:</label>
+              <select class="status-dropdown approval-dropdown" data-reimbursement-id="{{ reimbursement.id }}">
+                <option value="">-- Select Action --</option>
+                <option value="approve">✓ Approve</option>
+                <option value="reject">✗ Reject</option>
+              </select>
             </div>
           </div>
           {% endfor %}
@@ -473,9 +479,20 @@
             </div>
             {% endif %}
 
-            <div class="approval-info">
-              <strong>✓ Approved by {{ reimbursement.approved_by.get_full_name|default:reimbursement.approved_by.username }}</strong><br>
-              on {{ reimbursement.approved_at|date:"M d, Y H:i" }}
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong>✓ Approved by {{ reimbursement.approved_by.get_full_name|default:reimbursement.approved_by.username }}</strong><br>
+                  <small>on {{ reimbursement.approved_at|date:"M d, Y H:i" }}</small>
+                </div>
+                <div style="text-align: right;">
+                  <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #666;">Payment:</label>
+                  <select class="status-dropdown paid-dropdown" data-reimbursement-id="{{ reimbursement.id }}">
+                    <option value="unpaid" {% if not reimbursement.is_paid %}selected{% endif %}>Unpaid</option>
+                    <option value="paid" {% if reimbursement.is_paid %}selected{% endif %}>Paid</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
           {% endfor %}
@@ -559,6 +576,90 @@
         button.classList.add('active');
         const tabId = button.getAttribute('data-tab');
         document.getElementById(tabId).classList.add('active');
+      });
+    });
+
+    // Handle approval status change
+    document.querySelectorAll('.approval-dropdown').forEach(dropdown => {
+      dropdown.addEventListener('change', function() {
+        const reimbursementId = this.getAttribute('data-reimbursement-id');
+        const status = this.value;
+
+        if (!status) return;
+
+        const formData = new FormData();
+        formData.append('status', status);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
+
+        // If CSRF token not found, try to get it from cookies
+        if (!formData.get('csrfmiddlewaretoken')) {
+          const csrftoken = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='))?.split('=')[1];
+          if (csrftoken) formData.set('csrfmiddlewaretoken', csrftoken);
+        }
+
+        fetch(`/api/reimbursement/${reimbursementId}/update-status/`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert(data.message);
+            location.reload();
+          } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+            this.value = '';
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Failed to update status');
+          this.value = '';
+        });
+      });
+    });
+
+    // Handle paid status change
+    document.querySelectorAll('.paid-dropdown').forEach(dropdown => {
+      dropdown.addEventListener('change', function() {
+        const reimbursementId = this.getAttribute('data-reimbursement-id');
+        const paidStatus = this.value;
+
+        const formData = new FormData();
+        formData.append('paid_status', paidStatus);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
+
+        // If CSRF token not found, try to get it from cookies
+        if (!formData.get('csrfmiddlewaretoken')) {
+          const csrftoken = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='))?.split('=')[1];
+          if (csrftoken) formData.set('csrfmiddlewaretoken', csrftoken);
+        }
+
+        fetch(`/api/reimbursement/${reimbursementId}/update-paid/`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert(data.message);
+            location.reload();
+          } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+            this.value = this.value === 'paid' ? 'unpaid' : 'paid';
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Failed to update payment status');
+          this.value = this.value === 'paid' ? 'unpaid' : 'paid';
+        });
       });
     });
   </script>

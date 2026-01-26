@@ -10,12 +10,16 @@ urlpatterns = [
     path('onboarding/complete/', views.complete_onboarding, name='complete_onboarding'),
     path('onboarding/status/', views.onboarding_status, name='onboarding_status'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('dashboard/mark-payment/', views.mark_payment, name='mark_payment'),
     path('view-attendance/', views.view_attendance, name='view_attendance'),
     path('edit-attendance/<int:record_id>/', views.edit_attendance, name='edit_attendance'),
     path('attendance/mark', views.mark_attendance, name='mark_attendance'),
+    path('api/events/', views.get_events, name='get_events'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('manage-balances/', views.manage_balances, name='manage_balances'),
     path('my-assignments/', views.my_assignments, name='my_assignments'),
+    path('admin/user-attendance-history/<int:user_id>/', views.view_user_attendance_history, name='view_user_attendance_history'),
+    path('admin/reimbursement/<int:reimbursement_id>/action/', views.reimbursement_action, name='reimbursement_action'),
     path('logout/', views.user_logout, name='logout'),
     
     # Event Management URLs

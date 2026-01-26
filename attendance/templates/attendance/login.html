@@ -5,33 +5,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login | Sound Fusion</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .message-alert {
+            animation: slideIn 0.3s ease-in-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-alert.fade-out {
+            animation: fadeOut 0.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-50 flex items-center justify-center min-h-screen" style="background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);">
 
-    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md" style="border-top: 4px solid #2ecc71;">
-        <h2 class="text-3xl font-bold text-center mb-6" style="color: #0d2818;">Welcome Back 👋</h2>
+    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md" style="border-top: 4px solid #27ae60;">
+        <h2 class="text-3xl font-bold text-center mb-2" style="color: #0d2818;">Welcome Back</h2>
+        <p class="text-center text-gray-600 mb-6 text-sm">Sound Fusion Attendance System</p>
+        
+        <!-- Display all error and success messages with auto-dismiss -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 p-4 rounded-lg message-alert" 
+                     id="message-{{ forloop.counter }}"
+                     style="{% if message.tags == 'error' %}background-color: #fee; border: 2px solid #f99; color: #c33;{% else %}background-color: #efe; border: 2px solid #9f9; color: #363;{% endif %}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>{{ message }}</span>
+                        <button onclick="dismissMessage('message-{{ forloop.counter }}')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: inherit; opacity: 0.7;">×</button>
+                    </div>
+                </div>
+                <script>
+                    (function() {
+                        const msgElement = document.getElementById('message-{{ forloop.counter }}');
+                        if (msgElement) {
+                            setTimeout(function() {
+                                msgElement.classList.add('fade-out');
+                                setTimeout(function() {
+                                    msgElement.style.display = 'none';
+                                }, 500);
+                            }, 6000);
+                        }
+                    })();
+                </script>
+            {% endfor %}
+        {% endif %}
+        
         <form method="POST" class="space-y-4">
             {% csrf_token %}
             <div>
                 <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
                 <input type="text" id="username" name="username" required
-                    class="w-full mt-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+                    class="w-full mt-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none transition" 
+                    style="border-color: #ddd;" />
             </div>
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
                 <input type="password" id="password" name="password" required
-                    class="w-full mt-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+                    class="w-full mt-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none transition" 
+                    style="border-color: #ddd;" />
             </div>
             <button type="submit"
-                class="w-full text-white py-2 rounded-lg transition" style="background: #2ecc71; color: #0d2818; font-weight: 600;" onmouseover="this.style.background='#27ae60';" onmouseout="this.style.background='#2ecc71';">
+                class="w-full text-white py-2 rounded-lg transition font-semibold" 
+                style="background: #27ae60; color: white;" 
+                onmouseover="this.style.background='#229954';" 
+                onmouseout="this.style.background='#27ae60';">
                 Login
             </button>
         </form>
 
         <p class="mt-4 text-center text-sm" style="color: #666;">
             Don't have an account?
-            <a href="{% url 'register' %}" style="color: #2ecc71; text-decoration: none; font-weight: 600;" onmouseover="this.style.textDecoration='underline';" onmouseout="this.style.textDecoration='none';">Sign up here</a>
+            <a href="{% url 'register' %}" style="color: #27ae60; text-decoration: none; font-weight: 600;" onmouseover="this.style.textDecoration='underline';" onmouseout="this.style.textDecoration='none';">Sign up here</a>
         </p>
     </div>
+
+    <script>
+        function dismissMessage(messageId) {
+            const msgElement = document.getElementById(messageId);
+            if (msgElement) {
+                msgElement.classList.add('fade-out');
+                setTimeout(function() {
+                    msgElement.style.display = 'none';
+                }, 500);
+            }
+        }
+    </script>
 </body>
 </html>

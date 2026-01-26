@@ -1,8 +1,11 @@
 from django.contrib import admin
-from .models import Profile, AttendanceRecord, Event, BalanceAdjustment, ExpenseReimbursement, SalaryPayment, EmployeeOnboarding
+from .models import Profile, AttendanceRecord, Event, BalanceAdjustment, ExpenseReimbursement, SalaryPayment, EmployeeOnboarding, PaymentRecord
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from django.contrib.admin import AdminSite
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django import forms
 
 
 class LimitedEventManagerMixin:
@@ -102,8 +105,8 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(AttendanceRecord)
 class AttendanceRecordAdmin(LimitedEventManagerMixin, admin.ModelAdmin):
-    list_display = ('user', 'date', 'get_event', 'get_employment_type', 'overtime_hours', 'supper_allowance', 'amount_paid', 'is_paid')
-    list_filter = ('date', 'is_paid', 'event_fk', 'user__profile__employment_type')
+    list_display = ('get_user_link', 'date', 'get_event', 'get_employment_type', 'overtime_hours', 'amount_paid', 'get_history_link')
+    list_filter = ('date', 'event_fk', 'user__profile__employment_type')
     search_fields = ('user__username', 'event_fk__name')
     readonly_fields = ('date',)
     
@@ -112,14 +115,27 @@ class AttendanceRecordAdmin(LimitedEventManagerMixin, admin.ModelAdmin):
             'fields': ('user', 'date', 'check_in_time', 'event_fk', 'get_employment_type')
         }),
         ('Work Details', {
-            'fields': ('overtime_hours', 'supper_allowance', 'amount_paid'),
-            'description': 'Overtime hours and supper allowance (for salaried employees)'
+            'fields': ('overtime_hours', 'amount_paid'),
+            'description': 'Overtime hours and amount owed'
         }),
         ('Payment Status', {
-            'fields': ('is_paid', 'admin_adjustment'),
+            'fields': ('admin_adjustment',),
             'classes': ('collapse',)
         }),
     )
+    
+    def get_user_link(self, obj):
+        """Display user name as clickable link to filtered attendance records"""
+        from django.utils.html import format_html
+        from django.urls import reverse
+        
+        user_records_url = reverse('admin:attendance_attendancerecord_changelist') + f"?user__id__exact={obj.user.id}"
+        return format_html(
+            '<a href="{}">{}</a>',
+            user_records_url,
+            obj.user.get_full_name() or obj.user.username
+        )
+    get_user_link.short_description = 'User'
     
     def get_event(self, obj):
         """Display event name from event_fk"""
@@ -130,6 +146,23 @@ class AttendanceRecordAdmin(LimitedEventManagerMixin, admin.ModelAdmin):
         """Display employment type"""
         return obj.user.profile.get_employment_type_display()
     get_employment_type.short_description = 'Employment Type'
+    
+    def amount_paid(self, obj):
+        """Display amount owed"""
+        return f"KSH {obj.amount_paid}"
+    amount_paid.short_description = 'Amount'
+    
+    def get_history_link(self, obj):
+        """Display link to view balance adjustment history for user"""
+        from django.utils.html import format_html
+        from django.urls import reverse
+        
+        history_url = reverse('admin:attendance_balanceadjustment_changelist') + f"?user__id__exact={obj.user.id}"
+        return format_html(
+            '<a class="button" href="{}" style="background: #417690; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none;">Changes History</a>',
+            history_url
+        )
+    get_history_link.short_description = 'Changes History'
 
 
 @admin.register(Event)
@@ -200,8 +233,9 @@ class BalanceAdjustmentAdmin(admin.ModelAdmin):
 
 @admin.register(ExpenseReimbursement)
 class ExpenseReimbursementAdmin(admin.ModelAdmin):
-    list_display = ('user', 'get_event', 'expense_type', 'amount', 'status', 'requested_at')
-    list_filter = ('status', 'expense_type', 'requested_at', 'event')
+    list_display = ('user', 'get_event', 'expense_type', 'amount', 'status', 'is_paid', 'requested_at')
+    list_filter = ('status', 'expense_type', 'requested_at', 'event', 'is_paid')
+    list_editable = ('status', 'is_paid')
     search_fields = ('user__username', 'event__name', 'description')
     readonly_fields = ('requested_at', 'approved_at', 'approved_by', 'receipt_photo_display')
     change_list_template = 'admin/attendance/expensereimbursement/change_list.html'
@@ -211,19 +245,101 @@ class ExpenseReimbursementAdmin(admin.ModelAdmin):
             'fields': ('user', 'event', 'expense_type', 'amount', 'description', 'receipt_photo', 'receipt_photo_display')
         }),
         ('Status & Approval', {
-            'fields': ('status', 'approved_by', 'approved_at', 'rejection_reason')
+            'fields': ('status', 'is_paid', 'approved_by', 'approved_at', 'rejection_reason')
         }),
         ('Timestamps', {
             'fields': ('requested_at',),
             'classes': ('collapse',)
         }),
     )
+    
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        """Use a dropdown select widget for is_paid field instead of checkbox"""
+        if db_field.name == 'is_paid':
+            # Create a custom select widget
+            kwargs['widget'] = forms.Select(choices=[
+                (True, 'Paid'),
+                (False, 'Not Paid'),
+            ])
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+    
+    def changelist_view(self, request, extra_context=None):
+        """Handle both GET and POST requests for bulk updates and show totals"""
+        from django.http import JsonResponse
+        import json
+        from django.db.models import Sum, Q
+        
+        # Handle AJAX POST for bulk updates
+        if request.method == 'POST' and 'application/json' in request.META.get('CONTENT_TYPE', ''):
+            try:
+                data = json.loads(request.body)
+                changes = data.get('changes', [])
+                
+                for change in changes:
+                    try:
+                        reimbursement = ExpenseReimbursement.objects.get(pk=change['id'])
+                        new_status = change.get('status', reimbursement.status)
+                        new_paid_status = change.get('paid_status', 'Not Paid')
+                        new_is_paid = new_paid_status == 'Paid'
+                        
+                        # Update status if it changed
+                        if new_status != reimbursement.status:
+                            reimbursement.status = new_status
+                            if new_status == 'approved' and not reimbursement.approved_by:
+                                reimbursement.approved_by = request.user
+                                reimbursement.approved_at = timezone.now()
+                                # Update user balance when approved
+                                profile = reimbursement.user.profile
+                                profile.balance += reimbursement.amount
+                                profile.save()
+                                # Create balance adjustment record
+                                BalanceAdjustment.objects.create(
+                                    user=reimbursement.user,
+                                    reason=f"Reimbursement approved: {reimbursement.get_expense_type_display()} - KSH {reimbursement.amount}",
+                                    amount=reimbursement.amount,
+                                    adjusted_by=request.user
+                                )
+                        
+                        # Update paid status if changed
+                        if new_is_paid != reimbursement.is_paid:
+                            reimbursement.is_paid = new_is_paid
+                        
+                        reimbursement.save()
+                    except ExpenseReimbursement.DoesNotExist:
+                        pass
+                
+                return JsonResponse({'success': True, 'message': 'All changes saved successfully!'})
+            except Exception as e:
+                import traceback
+                return JsonResponse({'success': False, 'error': str(e), 'traceback': traceback.format_exc()})
+        
+        # Calculate totals for display
+        all_reimbursements = ExpenseReimbursement.objects.all()
+        
+        total_requested = all_reimbursements.aggregate(Sum('amount'))['amount__sum'] or 0
+        total_approved = all_reimbursements.filter(status='approved').aggregate(Sum('amount'))['amount__sum'] or 0
+        total_paid = all_reimbursements.filter(is_paid=True).aggregate(Sum('amount'))['amount__sum'] or 0
+        total_pending = all_reimbursements.filter(status='pending').aggregate(Sum('amount'))['amount__sum'] or 0
+        
+        # Add extra context with totals
+        extra_context = extra_context or {}
+        extra_context['total_requested'] = f"KSH {total_requested:,.2f}"
+        extra_context['total_approved'] = f"KSH {total_approved:,.2f}"
+        extra_context['total_paid'] = f"KSH {total_paid:,.2f}"
+        extra_context['total_pending'] = f"KSH {total_pending:,.2f}"
+        
+        # For GET requests, use parent implementation
+        return super().changelist_view(request, extra_context)
+
+    def get_event(self, obj):
+        """Display event name"""
+        return obj.event.name if obj.event else "—"
+    get_event.short_description = 'Event'
 
     def receipt_photo_display(self, obj):
         """Display receipt photo as a clickable link and preview"""
         if obj.receipt_photo:
             from django.utils.html import format_html
-            from django.utils.safestring import mark_safe
             image_url = obj.receipt_photo.url
             return format_html(
                 '<div><img src="{}" style="max-width: 300px; max-height: 300px; border-radius: 4px;"/>'
@@ -234,43 +350,13 @@ class ExpenseReimbursementAdmin(admin.ModelAdmin):
         return "No receipt uploaded"
     receipt_photo_display.short_description = "Receipt Photo Preview"
 
-    def changelist_view(self, request, extra_context=None):
-        """Add reimbursement summary to the changelist view"""
-        from django.db.models import Sum
-        
-        extra_context = extra_context or {}
-        
-        # Calculate totals by status
-        pending_amount = ExpenseReimbursement.objects.filter(
-            status='pending'
-        ).aggregate(total=Sum('amount'))['total'] or 0
-        
-        approved_amount = ExpenseReimbursement.objects.filter(
-            status='approved'
-        ).aggregate(total=Sum('amount'))['total'] or 0
-        
-        rejected_amount = ExpenseReimbursement.objects.filter(
-            status='rejected'
-        ).aggregate(total=Sum('amount'))['total'] or 0
-        total_requests = ExpenseReimbursement.objects.count()
-        
-        extra_context['pending_amount'] = float(pending_amount)
-        extra_context['approved_amount'] = float(approved_amount)
-        extra_context['rejected_amount'] = float(rejected_amount)
-        extra_context['total_requests'] = total_requests
-        
-        return super().changelist_view(request, extra_context=extra_context)
-
-    def get_event(self, obj):
-        """Display event name"""
-        return obj.event.name if obj.event else "No Event"
-    get_event.short_description = 'Event'
-
     def save_model(self, request, obj, form, change):
         if 'status' in form.changed_data and obj.status == 'approved':
             obj.approved_by = request.user
             obj.approved_at = timezone.now()
+            # Note: Reimbursements are refunds and should not affect user balance
         super().save_model(request, obj, form, change)
+
 
 
 @admin.register(SalaryPayment)
@@ -321,30 +407,30 @@ class EmployeeOnboardingAdmin(admin.ModelAdmin):
     ordering = ('-submitted_at',)
     
     fieldsets = (
-        ('👤 Personal Information', {
+        ('Personal Information', {
             'fields': ('first_name', 'last_name', 'email', 'phone_number', 'date_of_birth', 'national_id')
         }),
-        ('💼 Employment Details', {
+        ('Employment Details', {
             'fields': ('job_role', 'monthly_salary', 'bank_account'),
             'description': 'Specify the job role and monthly salary for the salaried position'
         }),
-        ('📄 Documents', {
+        ('Documents', {
             'fields': ('id_photo', 'employment_letter', 'bank_details')
         }),
-        ('⚙️ Approval Status', {
+        ('Approval Status', {
             'fields': ('status', 'rejection_reason'),
-            'description': '🔍 Change status to approve or reject the application<br><strong>Workflow:</strong> pending → accepted → completed'
+            'description': 'Change status to approve or reject the application<br><strong>Workflow:</strong> pending → accepted → completed'
         }),
-        ('✓ Profile Information', {
+        ('Profile Information', {
             'fields': ('get_profile_status',),
             'description': 'System-generated profile information (read-only). Shows when user account and profile are created.'
         }),
-        ('👨‍💼 Review Information', {
+        ('Review Information', {
             'fields': ('reviewed_by', 'submitted_at', 'reviewed_at'),
             'classes': ('collapse',),
             'description': 'Admin who reviewed and timestamps'
         }),
-        ('🔗 User Account', {
+        ('User Account', {
             'fields': ('user',),
             'classes': ('collapse',),
             'description': 'Auto-created user account. Activated when status → "completed"'
@@ -368,10 +454,10 @@ class EmployeeOnboardingAdmin(admin.ModelAdmin):
         color = status_colors.get(obj.status, '#6C757D')
         
         status_labels = {
-            'pending': '⏳ Pending Review',
-            'accepted': '✅ Accepted',
+            'pending': 'Pending Review',
+            'accepted': 'Accepted',
             'completed': 'Completed',
-            'rejected': '❌ Rejected',
+            'rejected': 'Rejected',
         }
         label = status_labels.get(obj.status, obj.status)
         
@@ -682,6 +768,24 @@ class CustomUserAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+@admin.register(PaymentRecord)
+class PaymentRecordAdmin(admin.ModelAdmin):
+    list_display = ('user', 'amount', 'payment_method', 'reference_number', 'payment_date')
+    list_filter = ('payment_method', 'payment_date', 'user')
+    search_fields = ('user__username', 'reference_number')
+    readonly_fields = ('payment_date',)
+    
+    fieldsets = (
+        ('Payment Details', {
+            'fields': ('user', 'amount', 'payment_method', 'reference_number')
+        }),
+        ('Additional Info', {
+            'fields': ('notes', 'payment_date'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
 # Unregister the default User admin if it exists
 try:
     admin.site.unregister(User)
@@ -690,3 +794,8 @@ except admin.sites.NotRegistered:
 
 # Register custom User admin
 admin.site.register(User, CustomUserAdmin)
+
+# Rename Employee Onboarding to Employee
+from attendance.models import EmployeeOnboarding
+EmployeeOnboarding._meta.verbose_name = "Employee"
+EmployeeOnboarding._meta.verbose_name_plural = "Employees"

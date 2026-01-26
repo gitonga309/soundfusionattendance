@@ -79,11 +79,22 @@ class AttendanceForm(forms.ModelForm):
         queryset=Event.objects.all().order_by('-date'),
         widget=forms.Select(attrs={
             'class': 'form-control',
-            'required': 'required'
+            'list': 'event_list'
         }),
-        label='Select Event',
-        help_text='Select the event you are attending',
+        label='Select or Type Event',
+        help_text='Select from existing events or type a new event name',
         required=False
+    )
+    event_name = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Type event name',
+            'autocomplete': 'off'
+        }),
+        label='Event Name',
+        help_text='You can type a custom event name if not found in the list'
     )
     
     class Meta:
@@ -157,8 +168,7 @@ class ExpenseReimbursementForm(forms.ModelForm):
         fields = ['event', 'expense_type', 'amount', 'description', 'receipt_photo']
         widgets = {
             'event': forms.Select(attrs={
-                'class': 'form-control',
-                'required': 'required'
+                'class': 'form-control'
             }),
             'expense_type': forms.Select(attrs={
                 'class': 'form-control',
@@ -178,16 +188,14 @@ class ExpenseReimbursementForm(forms.ModelForm):
             }),
             'receipt_photo': forms.FileInput(attrs={
                 'class': 'form-control',
-                'accept': 'image/*',
-                'required': 'required'
+                'accept': 'image/*'
             })
         }
-
-    def clean_receipt_photo(self):
-        receipt_photo = self.cleaned_data.get('receipt_photo')
-        if not receipt_photo:
-            raise forms.ValidationError("Receipt/proof document is required for reimbursement requests.")
-        return receipt_photo
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make event field optional (not required)
+        self.fields['event'].required = False
 
     def clean_amount(self):
         amount = self.cleaned_data.get('amount')
@@ -196,3 +204,158 @@ class ExpenseReimbursementForm(forms.ModelForm):
         if amount and amount > 50000:
             raise forms.ValidationError("Amount cannot exceed KSH 50,000.")
         return amount
+
+
+class EmployeeOnboardingForm(forms.ModelForm):
+    """Form for salaried employees to complete their onboarding"""
+    class Meta:
+        model = EmployeeOnboarding
+        fields = ['first_name', 'last_name', 'job_role', 'monthly_salary', 'date_of_birth', 'national_id', 'bank_account', 'id_photo', 'bank_details']
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'First Name',
+                'required': 'required'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Last Name',
+                'required': 'required'
+            }),
+            'job_role': forms.Select(attrs={
+                'class': 'form-control',
+                'required': 'required'
+            }),
+            'monthly_salary': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Monthly Salary (KSH)',
+                'min': '0',
+                'step': '100',
+                'required': 'required'
+            }),
+            'date_of_birth': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
+                'required': 'required'
+            }),
+            'national_id': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'National ID Number'
+            }),
+            'bank_account': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Bank Account Number'
+            }),
+            'id_photo': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
+            'bank_details': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            })
+        }
+    
+    def clean_monthly_salary(self):
+        salary = self.cleaned_data.get('monthly_salary')
+        if salary and salary <= 0:
+            raise forms.ValidationError("Salary must be greater than 0.")
+        return salary
+
+
+class SalariedEmployeeRegistrationForm(UserCreationForm):
+    """Combined form for salaried employees to register and complete onboarding in one step"""
+    email = forms.EmailField(required=True)
+    phone_number = forms.CharField(max_length=15, required=True)
+    
+    # Onboarding fields
+    first_name = forms.CharField(max_length=150, required=True, label="First Name (for employment)")
+    last_name = forms.CharField(max_length=150, required=True, label="Last Name (for employment)")
+    job_role = forms.ChoiceField(
+        choices=Profile.JOB_ROLES,
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    monthly_salary = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=True,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Monthly Salary (KSH)',
+            'min': '0',
+            'step': '100'
+        })
+    )
+    date_of_birth = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        required=True,
+        label="Date of Birth"
+    )
+    national_id = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'National ID Number'
+        })
+    )
+    bank_account = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Bank Account Number'
+        })
+    )
+    id_photo = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*'
+        })
+    )
+    bank_details = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.pdf,.jpg,.jpeg,.png'
+        })
+    )
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'phone_number', 'password1', 'password2']
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise ValidationError("This email is already registered.")
+        return email
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if User.objects.filter(username=username).exists():
+            raise ValidationError("This username is already taken.")
+        return username
+
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if Profile.objects.filter(phone_number=phone_number).exists():
+            raise ValidationError("This phone number is already registered.")
+        return phone_number
+
+    def clean_monthly_salary(self):
+        salary = self.cleaned_data.get('monthly_salary')
+        if salary and salary <= 0:
+            raise ValidationError("Monthly salary must be greater than 0.")
+        return salary
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("Passwords do not match.")
+        return cleaned_data

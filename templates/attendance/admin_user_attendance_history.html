@@ -1,0 +1,180 @@
+{% extends 'admin/base_site.html' %}
+{% load static %}
+
+{% block title %}Attendance History - {{ target_user.username }}{% endblock %}
+
+{% block extrastyle %}
+    <style>
+        .change-item {
+            border-left: 4px solid #417690;
+            padding: 12px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            border-radius: 3px;
+        }
+        .change-item.attendance {
+            border-left-color: #28a745;
+        }
+        .change-item.adjustment {
+            border-left-color: #ffc107;
+        }
+        .change-item.reimbursement {
+            border-left-color: #17a2b8;
+        }
+        .change-item.salary {
+            border-left-color: #6c63ff;
+        }
+        .change-item.payment {
+            border-left-color: #dc3545;
+        }
+        .balance-badge {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            color: white;
+        }
+        .balance-increase {
+            background-color: #28a745;
+        }
+        .balance-decrease {
+            background-color: #dc3545;
+        }
+        .record-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .record-table th {
+            background-color: #417690;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+        .record-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        .record-table tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Attendance & Payment History - {{ target_user.get_full_name|default:target_user.username }}</h1>
+    
+    <div style="margin: 20px 0;">
+        <a href="/admin/auth/user/{{ target_user.id }}/change/" class="button">← Back to User</a>
+    </div>
+    
+    <h2>User Information</h2>
+    <table class="record-table">
+        <tbody>
+            <tr>
+                <td style="width: 150px;"><strong>Username:</strong></td>
+                <td>{{ target_user.username }}</td>
+            </tr>
+            <tr>
+                <td><strong>Email:</strong></td>
+                <td>{{ target_user.email }}</td>
+            </tr>
+            <tr>
+                <td><strong>Employment Type:</strong></td>
+                <td>{{ profile.get_employment_type_display }}</td>
+            </tr>
+            <tr>
+                <td><strong>Current Balance:</strong></td>
+                <td><span class="balance-badge balance-increase">KSH {{ profile.balance }}</span></td>
+            </tr>
+        </tbody>
+    </table>
+    
+    {% if attendance_records %}
+    <h2>Attendance Records ({{ attendance_records|length }})</h2>
+    <table class="record-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Event</th>
+                <th>Overtime Hours</th>
+                <th>Supper Allowance</th>
+                <th>Amount Paid</th>
+                <th>Paid Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in attendance_records %}
+            <tr>
+                <td>{{ record.date|date:"Y-m-d" }}</td>
+                <td>{{ record.event_fk.name|default:"N/A" }}</td>
+                <td>{{ record.overtime_hours }}h</td>
+                <td>KSH {{ record.supper_allowance|default:"0.00" }}</td>
+                <td><strong>KSH {{ record.amount_paid|floatformat:2 }}</strong></td>
+                <td>
+                    {% if record.is_paid %}
+                        <span style="background-color: #28a745; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">✓ Paid</span>
+                    {% else %}
+                        <span style="background-color: #ffc107; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">⏳ Unpaid</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="background-color: #e7f3ff; padding: 15px; border-radius: 3px; margin-bottom: 20px;">
+        <p><em>No attendance records found for this user.</em></p>
+    </div>
+    {% endif %}
+    
+    {% if balance_changes %}
+    <h2>Balance Change History ({{ balance_changes|length }})</h2>
+    
+    {% for change in balance_changes %}
+        <div class="change-item {{ change.change_type }}">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>{{ change.get_change_type_display }}</strong>
+                    <br>
+                    <small style="color: #666;">
+                        {{ change.timestamp|date:"Y-m-d H:i:s" }}
+                        {% if change.changed_by %}
+                            • By {{ change.changed_by.get_full_name|default:change.changed_by.username }}
+                        {% endif %}
+                    </small>
+                </div>
+                <div style="text-align: right;">
+                    <div>
+                        {% if change.amount_change >= 0 %}
+                            <span class="balance-badge balance-increase">+KSH {{ change.amount_change|floatformat:2 }}</span>
+                        {% else %}
+                            <span class="balance-badge balance-decrease">-KSH {{ change.amount_change|floatformat:2|cut:"-" }}</span>
+                        {% endif %}
+                    </div>
+                    <small style="color: #666;">
+                        {{ change.previous_balance|floatformat:2 }} → {{ change.new_balance|floatformat:2 }}
+                    </small>
+                </div>
+            </div>
+            
+            {% if change.description %}
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 12px; color: #555;">
+                <strong>Description:</strong> {{ change.description }}
+            </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+    
+    {% else %}
+    <div style="background-color: #e7f3ff; padding: 15px; border-radius: 3px; margin-bottom: 20px;">
+        <p><em>No balance changes recorded yet for this user.</em></p>
+    </div>
+    {% endif %}
+    
+    <div style="margin: 30px 0;">
+        <a href="/admin/auth/user/{{ target_user.id }}/change/" class="button">← Back to User</a>
+    </div>
+</div>
+{% endblock %}

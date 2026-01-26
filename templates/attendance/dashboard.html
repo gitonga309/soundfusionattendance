@@ -447,8 +447,8 @@
     {% endif %}
 
     <div class="card">
-      <h2><i class="fas fa-history"></i> Recent Activity (Attendance & Admin Changes)</h2>
-      {% if recent_records or recent_adjustments %}
+      <h2><i class="fas fa-history"></i> Recent Activity (Attendance & Admin Changes & Payments)</h2>
+      {% if all_activities %}
         <table class="adjustments-table">
           <thead>
             <tr>
@@ -459,29 +459,39 @@
             </tr>
           </thead>
           <tbody>
-            {% for record in recent_records %}
-            <tr>
-              <td>{{ record.date|date:"M d, Y" }}</td>
-              <td><span class="badge">Attendance</span></td>
-              <td>{{ record.event_fk.name|default:"Not specified" }} - {{ record.overtime_hours }} hrs OT</td>
-              <td>
-                <span class="amount-positive">+KSH {{ record.amount_paid }}</span>
-              </td>
-            </tr>
-            {% endfor %}
-            {% for adjustment in recent_adjustments %}
-            <tr>
-              <td>{{ adjustment.date|date:"M d, Y - H:i" }}</td>
-              <td><span class="badge" style="background: #ffe8e8; color: #c0392b;">Admin Change</span></td>
-              <td>{{ adjustment.reason }}</td>
-              <td>
-                {% if adjustment.amount >= 0 %}
-                  <span class="amount-positive">+KSH {{ adjustment.amount }}</span>
-                {% else %}
-                  <span class="amount-negative">KSH {{ adjustment.amount }}</span>
-                {% endif %}
-              </td>
-            </tr>
+            {% for activity in all_activities %}
+              {% if activity.type == 'attendance' %}
+              <tr>
+                <td>{{ activity.object.date|date:"M d, Y" }} <br><small>{{ activity.object.check_in_time|time:"H:i" }}</small></td>
+                <td><span class="badge">Attendance</span></td>
+                <td>{{ activity.object.event_fk.name|default:"Not specified" }} - {{ activity.object.overtime_hours }} hrs OT</td>
+                <td>
+                  <span class="amount-positive">+KSH {{ activity.object.amount_paid }}</span>
+                </td>
+              </tr>
+              {% elif activity.type == 'adjustment' %}
+              <tr>
+                <td>{{ activity.object.date|date:"M d, Y - H:i" }}</td>
+                <td><span class="badge" style="background: #ffe8e8; color: #c0392b;">Admin Change</span></td>
+                <td>{{ activity.object.reason }}</td>
+                <td>
+                  {% if activity.object.amount >= 0 %}
+                    <span class="amount-positive">+KSH {{ activity.object.amount }}</span>
+                  {% else %}
+                    <span class="amount-negative">KSH {{ activity.object.amount }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% elif activity.type == 'payment' %}
+              <tr>
+                <td>{{ activity.object.payment_date|date:"M d, Y - H:i" }}</td>
+                <td><span class="badge" style="background: #fef3cd; color: #856404;">Payment</span></td>
+                <td>{{ user.username }} marked payment via {{ activity.object.payment_method|title }}</td>
+                <td>
+                  <span class="amount-negative">-KSH {{ activity.object.amount }}</span>
+                </td>
+              </tr>
+              {% endif %}
             {% endfor %}
           </tbody>
         </table>
@@ -499,6 +509,9 @@
       </a>
       <a href="{% url 'view_attendance' %}">
         <i class="fas fa-list"></i> View Records
+      </a>
+      <a href="{% url 'mark_payment' %}">
+        <i class="fas fa-money-bill-wave"></i> Mark Payment
       </a>
       <a href="{% url 'submit_reimbursement' %}">
         <i class="fas fa-plus-circle"></i> Request Reimbursement

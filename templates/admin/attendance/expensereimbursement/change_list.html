@@ -1,28 +1,28 @@
 {% extends "admin/change_list.html" %}
 
 {% block content %}
-<div style="background: linear-gradient(135deg, #0d2818 0%, #1a472a 100%); color: #fff; padding: 0.8rem; border-radius: 6px; margin-bottom: 1.5rem;">
-    <h3 style="margin: 0 0 0.8rem 0; font-size: 0.95rem;">Reimbursement Summary</h3>
+<div style="background: linear-gradient(135deg, #0d2818 0%, #1a472a 100%); color: #fff; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
+    <h3 style="margin: 0 0 1rem 0; font-size: 1rem;">Reimbursement Summary</h3>
     
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem;">
-        <div style="background: rgba(46, 204, 113, 0.1); border-left: 3px solid #2ecc71; padding: 0.6rem; border-radius: 4px;">
-            <div style="font-size: 0.75rem; color: #bbb; margin-bottom: 0.3rem;">Total Requests</div>
-            <div style="font-size: 1.3rem; font-weight: bold; color: #2ecc71;">{{ total_requests }}</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 1rem; border-radius: 4px;">
+            <div style="font-size: 0.8rem; color: #bbb; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Requested</div>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #2ecc71;">{{ total_requested }}</div>
         </div>
         
-        <div style="background: rgba(255, 152, 0, 0.1); border-left: 3px solid #ff9800; padding: 0.6rem; border-radius: 4px;">
-            <div style="font-size: 0.75rem; color: #bbb; margin-bottom: 0.3rem;">Pending Amount</div>
-            <div style="font-size: 1.3rem; font-weight: bold; color: #ff9800;">KSH {{ pending_amount|floatformat:0 }}</div>
+        <div style="background: rgba(255, 152, 0, 0.1); border-left: 4px solid #ff9800; padding: 1rem; border-radius: 4px;">
+            <div style="font-size: 0.8rem; color: #bbb; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Pending</div>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #ff9800;">{{ total_pending }}</div>
         </div>
         
-        <div style="background: rgba(39, 174, 96, 0.1); border-left: 3px solid #27ae60; padding: 0.6rem; border-radius: 4px;">
-            <div style="font-size: 0.75rem; color: #bbb; margin-bottom: 0.3rem;">Approved Amount</div>
-            <div style="font-size: 1.3rem; font-weight: bold; color: #27ae60;">KSH {{ approved_amount|floatformat:0 }}</div>
+        <div style="background: rgba(39, 174, 96, 0.1); border-left: 4px solid #27ae60; padding: 1rem; border-radius: 4px;">
+            <div style="font-size: 0.8rem; color: #bbb; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Approved</div>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #27ae60;">{{ total_approved }}</div>
         </div>
         
-        <div style="background: rgba(231, 76, 60, 0.1); border-left: 3px solid #e74c3c; padding: 0.6rem; border-radius: 4px;">
-            <div style="font-size: 0.75rem; color: #bbb; margin-bottom: 0.3rem;">Rejected Amount</div>
-            <div style="font-size: 1.3rem; font-weight: bold; color: #e74c3c;">KSH {{ rejected_amount|floatformat:0 }}</div>
+        <div style="background: rgba(52, 152, 219, 0.1); border-left: 4px solid #3498db; padding: 1rem; border-radius: 4px;">
+            <div style="font-size: 0.8rem; color: #bbb; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Paid</div>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #3498db;">{{ total_paid }}</div>
         </div>
     </div>
 </div>

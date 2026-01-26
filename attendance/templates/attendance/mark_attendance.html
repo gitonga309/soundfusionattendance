@@ -158,15 +158,11 @@
       {% csrf_token %}
       
       <div class="form-group">
-        <label for="id_event_fk">Event/Venue:</label>
-        <select name="event_fk" id="id_event_fk" required>
-          <option value="">-- Select an Event --</option>
-          {% for event in form.event_fk.field.queryset %}
-            <option value="{{ event.id }}">
-              {{ event.name }} ({{ event.date|date:"M d, Y" }})
-            </option>
-          {% endfor %}
-        </select>
+        <label for="event_input">Event/Venue:</label>
+        <input type="text" id="event_input" placeholder="Type event name..." autocomplete="off" required>
+        <input type="hidden" name="event_fk" id="id_event_fk" value="">
+        <input type="hidden" name="event_name" id="id_event_name" value="">
+        <ul id="event_suggestions" style="list-style: none; padding: 5px 0; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; max-height: 150px; overflow-y: auto; display: none; background: white;"></ul>
       </div>
 
       <div class="form-group">
@@ -184,6 +180,105 @@
         {% endif %}
       </button>
     </form>
+
+    <script>
+      const eventInput = document.getElementById('event_input');
+      const eventFkInput = document.getElementById('id_event_fk');
+      const eventNameInput = document.getElementById('id_event_name');
+      const suggestionsList = document.getElementById('event_suggestions');
+      let events = [];
+
+      // Fetch all events on page load
+      fetch('{% url "get_events" %}')
+        .then(response => response.json())
+        .then(data => {
+          events = data.events;
+        })
+        .catch(error => console.error('Error fetching events:', error));
+
+      // Show suggestions as user types
+      eventInput.addEventListener('input', function() {
+        const value = this.value.toLowerCase().trim();
+        suggestionsList.innerHTML = '';
+
+        if (value.length === 0) {
+          suggestionsList.style.display = 'none';
+          eventFkInput.value = '';
+          eventNameInput.value = '';
+          return;
+        }
+
+        // Filter matching events
+        const matches = events.filter(event => 
+          event.name.toLowerCase().includes(value)
+        );
+
+        if (matches.length > 0) {
+          suggestionsList.style.display = 'block';
+          matches.forEach(event => {
+            const li = document.createElement('li');
+            li.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;';
+            li.textContent = event.name + ' (' + new Date(event.date).toLocaleDateString() + ')';
+            li.onmouseover = () => li.style.backgroundColor = '#f0f0f0';
+            li.onmouseout = () => li.style.backgroundColor = 'white';
+            li.onclick = () => {
+              eventInput.value = event.name;
+              eventFkInput.value = event.id;
+              eventNameInput.value = '';
+              suggestionsList.innerHTML = '';
+              suggestionsList.style.display = 'none';
+            };
+            suggestionsList.appendChild(li);
+          });
+        }
+
+        // Add custom entry option if value doesn't exactly match any event
+        if (!matches.some(e => e.name.toLowerCase() === value)) {
+          const li = document.createElement('li');
+          li.style.cssText = 'padding: 8px 12px; cursor: pointer; background: #f9f9f9; font-weight: bold; border-top: 1px solid #ddd;';
+          li.textContent = '✓ Use "' + value + '" as new event';
+          li.onmouseover = () => li.style.backgroundColor = '#f0f0f0';
+          li.onmouseout = () => li.style.backgroundColor = '#f9f9f9';
+          li.onclick = () => {
+            eventInput.value = value;
+            eventFkInput.value = '';
+            eventNameInput.value = value;
+            suggestionsList.innerHTML = '';
+            suggestionsList.style.display = 'none';
+          };
+          suggestionsList.appendChild(li);
+        }
+      });
+
+      // Hide suggestions when clicking outside
+      document.addEventListener('click', function(event) {
+        if (event.target !== eventInput && event.target !== suggestionsList) {
+          suggestionsList.style.display = 'none';
+        }
+      });
+
+      // Validate form before submission
+      document.querySelector('form').addEventListener('submit', function(e) {
+        const eventValue = eventInput.value.trim();
+        if (!eventValue) {
+          e.preventDefault();
+          alert('Please select or enter an event name');
+          return false;
+        }
+        
+        // If user typed a custom event (not selected from suggestions), set it
+        if (eventNameInput.value === '' && eventFkInput.value === '') {
+          // Check if this matches any event
+          const matchingEvent = events.find(e => e.name.toLowerCase() === eventValue.toLowerCase());
+          if (matchingEvent) {
+            eventFkInput.value = matchingEvent.id;
+          } else {
+            // Custom event - set the event_name field
+            eventNameInput.value = eventValue;
+          }
+        }
+      });
+    </script>
     
     <div class="back-link">
       <a href="{% url 'dashboard' %}">Back to Dashboard</a>
