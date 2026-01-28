@@ -1,0 +1,24 @@
+EVENT UPDATE: {{ status_title }}
+=====================================
+
+Hello,
+
+{{ description }}
+
+EVENT DETAILS:
+--------------
+Event: {{ event_name }}
+Date: {{ event_date|date:"F d, Y" }}
+Location: {{ event_location }}
+Status: {{ status }}
+
+If you have any questions or concerns, please don't hesitate to contact us.
+
+Best regards,
+Sound Fusion Team
+
+=====================================
+© 2024 Sound Fusion. All rights reserved.
+Contact: {{ contact_email }}
+
+This is an automated notification. Please do not reply to this email.

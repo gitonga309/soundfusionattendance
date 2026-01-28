@@ -17,7 +17,6 @@ urlpatterns = [
     path('api/events/', views.get_events, name='get_events'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('manage-balances/', views.manage_balances, name='manage_balances'),
-    path('my-assignments/', views.my_assignments, name='my_assignments'),
     path('admin/user-attendance-history/<int:user_id>/', views.view_user_attendance_history, name='view_user_attendance_history'),
     path('admin/reimbursement/<int:reimbursement_id>/action/', views.reimbursement_action, name='reimbursement_action'),
     path('logout/', views.user_logout, name='logout'),
@@ -35,4 +34,18 @@ urlpatterns = [
     path('admin/reimbursements/', views.admin_reimbursements, name='admin_reimbursements'),
     path('admin/reimbursement/<int:reimbursement_id>/approve/', views.approve_reimbursement, name='approve_reimbursement'),
     path('admin/reimbursement/<int:reimbursement_id>/reject/', views.reject_reimbursement, name='reject_reimbursement'),
+    path('admin/reimbursement/<int:reimbursement_id>/send-stk/', views.send_reimbursement_stk_push, name='send_reimbursement_stk_push'),
+    path('admin/reimbursement/<int:reimbursement_id>/confirm-payment/', views.confirm_reimbursement_payment, name='confirm_reimbursement_payment'),
+    
+    # M-Pesa Payment URLs
+    path('api/mpesa/request-payment/', views.request_mpesa_payment, name='request_mpesa_payment'),
+    path('api/mpesa/callback/', views.mpesa_callback, name='mpesa_callback'),
+    path('api/mpesa/payment-status/', views.check_payment_status, name='check_payment_status'),
+    
+    # STK Push Modal URLs (not under /admin/ to avoid admin catch-all)
+    path('payment/stk-push/', views.stk_push_modal, name='stk_push_modal'),
+    path('api/stk-status/', views.check_stk_status, name='check_stk_status'),
+    
+    # Crew Assignments
+    path('my-assignments/', views.my_assignments, name='my_assignments'),
 ]

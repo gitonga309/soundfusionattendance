@@ -697,28 +697,6 @@
                 }
             });
         });
-
-        // Intersection Observer for animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -100px 0px'
-        };
-
-        const observer = new IntersectionObserver(function(entries) {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
-            });
-        }, observerOptions);
-
-        document.querySelectorAll('.feature-card, .timeline-item').forEach(el => {
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(20px)';
-            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(el);
-        });
     </script>
 </body>
 </html>
@@ -777,8 +755,7 @@
             galleryGrid.innerHTML = '';
             document.getElementById('gallery-count').textContent = files.length;
 
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
+            for (const file of files) {
                 if (file.size <= 5 * 1024 * 1024) {
                     const reader = new FileReader();
                     reader.onload = function(e) {

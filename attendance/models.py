@@ -7,6 +7,16 @@ from django.db.models import Sum
 from django.core.cache import cache
 
 
+# ============= UTILITY FUNCTIONS FOR MODEL DEFAULTS =============
+def get_current_date():
+    """Get current date in Africa/Nairobi timezone"""
+    return timezone.now().astimezone(timezone.get_current_timezone()).date()
+
+
+def get_current_time():
+    """Get current time in Africa/Nairobi timezone"""
+    return timezone.now().astimezone(timezone.get_current_timezone()).time()
+
 
 class Profile(models.Model):
     EMPLOYMENT_TYPES = (
@@ -59,8 +69,8 @@ def save_user_profile(sender, instance, **kwargs):
 
 class AttendanceRecord(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    date = models.DateField(default=lambda: timezone.now().astimezone(timezone.get_current_timezone()).date())
-    check_in_time = models.TimeField(default=lambda: timezone.now().astimezone(timezone.get_current_timezone()).time())
+    date = models.DateField(default=get_current_date)
+    check_in_time = models.TimeField(default=get_current_time)
     event_fk = models.ForeignKey('Event', on_delete=models.SET_NULL, null=True, blank=True, related_name='attendance_records')
     overtime_hours = models.PositiveIntegerField(default=0)
     is_paid = models.BooleanField(default=False)
@@ -121,21 +131,8 @@ class Event(models.Model):
     client_venue = models.CharField(max_length=255, blank=True, help_text="Client venue/location")
     setup_date = models.DateField(null=True, blank=True, help_text="Date when setup starts")
     setup_end_date = models.DateField(null=True, blank=True, help_text="Date when setup is complete / Event ends")
-    equipments_delivered = models.TextField(blank=True, help_text="List of equipments delivered to this event")
-    
-    # User assignments for event work
-    setup_crew = models.ManyToManyField(
-        User, 
-        blank=True, 
-        related_name='setup_events',
-        help_text="Select users assigned to setup/teardown work"
-    )
-    event_crew = models.ManyToManyField(
-        User, 
-        blank=True, 
-        related_name='event_day_events',
-        help_text="Select users assigned for event day work"
-    )
+    setup_crew = models.ManyToManyField(User, blank=True, related_name='setup_events', help_text="Crew for setup phase")
+    event_crew = models.ManyToManyField(User, blank=True, related_name='event_crew_assignments', help_text="Crew for event day")
     
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_events')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -218,6 +215,10 @@ class ExpenseReimbursement(models.Model):
     approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_reimbursements')
     approved_at = models.DateTimeField(null=True, blank=True)
     rejection_reason = models.TextField(blank=True, help_text="Reason for rejection")
+    
+    # M-Pesa payment tracking
+    checkout_request_id = models.CharField(max_length=255, blank=True, null=True, help_text="M-Pesa checkout request ID")
+    paid_at = models.DateTimeField(null=True, blank=True, help_text="When the reimbursement was paid")
     
     def __str__(self):
         return f"{self.user.username} - {self.get_expense_type_display()} - KSH {self.amount} ({self.status})"
@@ -387,3 +388,81 @@ class PaymentRecord(models.Model):
     class Meta:
         ordering = ['-payment_date']
 
+
+# ============= NOTIFICATION AND EMAIL SYSTEM =============
+class EmailNotification(models.Model):
+    """Track email notifications sent to users and clients"""
+    NOTIFICATION_TYPES = (
+        ('event_created', 'Event Created'),
+        ('event_updated', 'Event Updated'),
+        ('crew_assignment', 'Crew Assignment'),
+        ('payment_approved', 'Payment Approved'),
+        ('reimbursement_approved', 'Reimbursement Approved'),
+        ('salary_processed', 'Salary Processed'),
+        ('attendance_recorded', 'Attendance Recorded'),
+        ('event_reminder', 'Event Reminder'),
+        ('crew_confirmation', 'Crew Confirmation Request'),
+    )
+    
+    recipient = models.EmailField(help_text="Email address of recipient")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications', null=True, blank=True)
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+    subject = models.CharField(max_length=255)
+    message = models.TextField()
+    is_sent = models.BooleanField(default=False)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    failed_attempts = models.IntegerField(default=0)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.notification_type} - {self.recipient}"
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_sent', 'created_at']),
+        ]
+
+
+# ============= M-PESA PAYMENT INTEGRATION =============
+class MpesaPayment(models.Model):
+    """Track M-Pesa STK push payments"""
+    STATUS_CHOICES = (
+        ('initiated', 'Initiated'),
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mpesa_payments')
+    phone_number = models.CharField(max_length=20, help_text="Phone number in format 254xxxxxxxxx")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Amount in KSH")
+    payment_purpose = models.CharField(max_length=255, help_text="Purpose of payment (salary, reimbursement, etc.)")
+    checkout_request_id = models.CharField(max_length=255, unique=True, help_text="M-Pesa checkout request ID")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='initiated')
+    
+    # M-Pesa response data
+    merchant_request_id = models.CharField(max_length=255, blank=True)
+    result_code = models.IntegerField(null=True, blank=True, help_text="M-Pesa result code")
+    result_description = models.TextField(blank=True)
+    receipt_number = models.CharField(max_length=100, blank=True, help_text="M-Pesa receipt number")
+    transaction_date = models.DateTimeField(null=True, blank=True)
+    
+    initiated_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"M-Pesa {self.amount} KSH - {self.user.username} - {self.status}"
+    
+    class Meta:
+        ordering = ['-initiated_at']
+        verbose_name_plural = "M-Pesa Payments"
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['checkout_request_id']),
+        ]
+
+
+# ============= EVENT CREW MANAGEMENT FOR CRM =============

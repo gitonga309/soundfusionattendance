@@ -121,7 +121,7 @@ class EventForm(forms.ModelForm):
     """Form for creating and managing events"""
     class Meta:
         model = Event
-        fields = ['name', 'date', 'location', 'description', 'client_venue', 'setup_date', 'setup_end_date', 'equipments_delivered']
+        fields = ['name', 'date', 'location', 'description', 'client_venue', 'setup_date', 'setup_end_date', 'setup_crew', 'event_crew']
         widgets = {
             'name': forms.TextInput(attrs={
                 'placeholder': 'Event name',
@@ -154,10 +154,11 @@ class EventForm(forms.ModelForm):
                 'class': 'form-control',
                 'rows': 4
             }),
-            'equipments_delivered': forms.Textarea(attrs={
-                'placeholder': 'List of equipments delivered (one per line)',
-                'class': 'form-control',
-                'rows': 4
+            'setup_crew': forms.CheckboxSelectMultiple(attrs={
+                'class': 'form-check-input'
+            }),
+            'event_crew': forms.CheckboxSelectMultiple(attrs={
+                'class': 'form-check-input'
             })
         }
 

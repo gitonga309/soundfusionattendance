@@ -1,11 +1,19 @@
 from django.contrib import admin
-from .models import Profile, AttendanceRecord, Event, BalanceAdjustment, ExpenseReimbursement, SalaryPayment, EmployeeOnboarding, PaymentRecord
+from .models import (
+    Profile, AttendanceRecord, Event, BalanceAdjustment, ExpenseReimbursement, 
+    SalaryPayment, EmployeeOnboarding, PaymentRecord, EmailNotification, 
+    MpesaPayment
+)
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from django.contrib.admin import AdminSite
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django import forms
+from django.urls import reverse
+from django.utils.html import format_html
+from .mpesa_utils import MpesaClient
+from .email_utils import EventCRMNotifier
 
 
 class LimitedEventManagerMixin:
@@ -37,7 +45,7 @@ class LimitedEventManagerMixin:
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'phone_number', 'email', 'employment_type', 'job_role', 'balance')
+    list_display = ('user', 'phone_number', 'email', 'employment_type', 'job_role', 'balance', 'send_stk_push_button')
     list_filter = ('employment_type', 'job_role')
     list_editable = ('balance',)
     search_fields = ('user__username', 'phone_number', 'email')
@@ -75,6 +83,15 @@ class ProfileAdmin(admin.ModelAdmin):
         extra_context['total_users'] = Profile.objects.count()
         
         return super().changelist_view(request, extra_context=extra_context)
+
+    def send_stk_push_button(self, obj):
+        """Display STK push button in list view"""
+        if obj.phone_number:
+            return format_html(
+                '<a class="button" style="background-color: #417690; pointer-events: none; opacity: 0.5; cursor: not-allowed;" disabled>Send STK</a>'
+            )
+        return "No phone"
+    send_stk_push_button.short_description = 'Send Payment'
 
     def save_model(self, request, obj, form, change):
         """Track balance changes made by admin and create BalanceAdjustment records"""
@@ -167,43 +184,28 @@ class AttendanceRecordAdmin(LimitedEventManagerMixin, admin.ModelAdmin):
 
 @admin.register(Event)
 class EventAdmin(LimitedEventManagerMixin, admin.ModelAdmin):
-    list_display = ('name', 'date', 'location', 'client_venue', 'get_crew_count', 'created_by', 'created_at')
+    list_display = ('name', 'date', 'location', 'client_venue', 'created_by', 'created_at')
     search_fields = ('name', 'location', 'description', 'client_venue')
     list_filter = ('date', 'created_at')
     readonly_fields = ('created_by', 'created_at', 'updated_at')
-    filter_horizontal = ('setup_crew', 'event_crew')  # Makes M2M selection user-friendly with widget
+    filter_horizontal = ('setup_crew', 'event_crew')
     
     fieldsets = (
         ('Event Details', {
             'fields': ('name', 'date', 'location', 'description')
         }),
         ('Event Logistics', {
-            'fields': ('client_venue', 'setup_date', 'setup_end_date', 'equipments_delivered')
+            'fields': ('client_venue', 'setup_date', 'setup_end_date')
         }),
-        ('Crew Assignment', {
+        ('Crew Assignments', {
             'fields': ('setup_crew', 'event_crew'),
-            'description': '<strong>Setup Crew:</strong> Users assigned for setup/teardown work<br><strong>Event Crew:</strong> Users assigned for event day operations',
-            'classes': ('wide',)
+            'description': 'Use the arrows to assign crew members to setup and event day'
         }),
         ('System Info', {
             'fields': ('created_by', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
-
-    def get_crew_count(self, obj):
-        """Show crew counts in list view"""
-        setup = obj.setup_crew.count()
-        event = obj.event_crew.count()
-        return f"Setup: {setup} | Event: {event}"
-    get_crew_count.short_description = 'Crew Assignments'
-
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        """Exclude superusers/main admin from crew selection"""
-        if db_field.name in ('setup_crew', 'event_crew'):
-            # Exclude superusers from the queryset
-            kwargs['queryset'] = User.objects.filter(is_superuser=False)
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     def get_form(self, request, obj=None, **kwargs):
         """Customize form to change setup_end_date label to 'Set Down Date'"""
@@ -233,7 +235,7 @@ class BalanceAdjustmentAdmin(admin.ModelAdmin):
 
 @admin.register(ExpenseReimbursement)
 class ExpenseReimbursementAdmin(admin.ModelAdmin):
-    list_display = ('user', 'get_event', 'expense_type', 'amount', 'status', 'is_paid', 'requested_at')
+    list_display = ('user', 'get_event', 'expense_type', 'amount', 'status', 'is_paid', 'send_stk_button', 'requested_at')
     list_filter = ('status', 'expense_type', 'requested_at', 'event', 'is_paid')
     list_editable = ('status', 'is_paid')
     search_fields = ('user__username', 'event__name', 'description')
@@ -335,6 +337,15 @@ class ExpenseReimbursementAdmin(admin.ModelAdmin):
         """Display event name"""
         return obj.event.name if obj.event else "—"
     get_event.short_description = 'Event'
+
+    def send_stk_button(self, obj):
+        """Display STK push button for sending payment"""
+        if obj.user.profile.phone_number and obj.is_paid == False and obj.status == 'approved':
+            return format_html(
+                '<a class="button" style="background-color: #417690; pointer-events: none; opacity: 0.5; cursor: not-allowed;" disabled>Send STK</a>'
+            )
+        return "—"
+    send_stk_button.short_description = 'Send Payment'
 
     def receipt_photo_display(self, obj):
         """Display receipt photo as a clickable link and preview"""
@@ -784,6 +795,104 @@ class PaymentRecordAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+# ============= M-PESA PAYMENT ADMIN =============
+@admin.register(MpesaPayment)
+class MpesaPaymentAdmin(admin.ModelAdmin):
+    list_display = ('user', 'phone_number', 'amount', 'status', 'payment_purpose', 'initiated_at', 'stk_push_button')
+    list_filter = ('status', 'initiated_at')
+    search_fields = ('user__username', 'phone_number', 'checkout_request_id')
+    readonly_fields = ('checkout_request_id', 'merchant_request_id', 'receipt_number', 'transaction_date', 'initiated_at', 'completed_at', 'result_code', 'result_description')
+    
+    fieldsets = (
+        ('Payment Info', {
+            'fields': ('user', 'phone_number', 'amount', 'payment_purpose', 'status')
+        }),
+        ('M-Pesa Details', {
+            'fields': ('checkout_request_id', 'merchant_request_id', 'receipt_number', 'result_code', 'result_description'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('initiated_at', 'completed_at', 'transaction_date'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def stk_push_button(self, obj):
+        """Display button to resend STK push if payment is pending"""
+        if obj.status == 'pending':
+            return format_html(
+                '<a class="button" style="pointer-events: none; opacity: 0.5; cursor: not-allowed;" disabled>Resend STK Push</a>'
+            )
+        return '—'
+    stk_push_button.short_description = 'Action'
+    
+    actions = ['initiate_stk_push_action']
+    
+    def initiate_stk_push_action(self, request, queryset):
+        """Admin action to initiate STK push"""
+        mpesa = MpesaClient()
+        for payment in queryset.filter(status='initiated'):
+            try:
+                result = mpesa.initiate_stk_push(
+                    payment.user,
+                    payment.phone_number,
+                    payment.amount,
+                    payment.payment_purpose,
+                    payment.id
+                )
+                if result['success']:
+                    payment.checkout_request_id = result['checkout_request_id']
+                    payment.merchant_request_id = result['merchant_request_id']
+                    payment.status = 'pending'
+                    payment.save()
+                    self.message_user(request, f"STK push initiated for {payment.user.username}")
+                else:
+                    self.message_user(request, f"Failed for {payment.user.username}: {result['message']}", level='error')
+            except Exception as e:
+                self.message_user(request, f"Error for {payment.user.username}: {str(e)}", level='error')
+    
+    initiate_stk_push_action.short_description = "Initiate M-Pesa STK Push"
+
+
+# ============= EVENT CREW MANAGEMENT ADMIN =============
+# ============= EMAIL NOTIFICATION ADMIN =============
+@admin.register(EmailNotification)
+class EmailNotificationAdmin(admin.ModelAdmin):
+    list_display = ('recipient', 'notification_type', 'is_sent', 'sent_at', 'failed_attempts', 'created_at')
+    list_filter = ('notification_type', 'is_sent', 'created_at')
+    search_fields = ('recipient', 'subject', 'user__username')
+    readonly_fields = ('created_at', 'sent_at', 'last_error')
+    
+    fieldsets = (
+        ('Recipient', {
+            'fields': ('recipient', 'user')
+        }),
+        ('Content', {
+            'fields': ('notification_type', 'subject', 'message')
+        }),
+        ('Status', {
+            'fields': ('is_sent', 'sent_at', 'failed_attempts', 'last_error', 'created_at')
+        }),
+    )
+    
+    actions = ['resend_notifications']
+    
+    def resend_notifications(self, request, queryset):
+        """Resend failed notifications"""
+        from .email_utils import EventCRMNotifier
+        
+        count = 0
+        for notification in queryset.filter(is_sent=False):
+            try:
+                EventCRMNotifier._queue_email(notification)
+                count += 1
+            except Exception as e:
+                self.message_user(request, f"Error resending to {notification.recipient}: {str(e)}", level='error')
+        
+        self.message_user(request, f"Resent {count} notifications")
+    resend_notifications.short_description = "Resend Failed Notifications"
 
 
 # Unregister the default User admin if it exists

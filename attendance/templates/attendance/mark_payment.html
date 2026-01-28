@@ -259,6 +259,29 @@
                     </select>
                 </div>
                 
+                <div class="form-group">
+                    <label for="reference_number">Reference Number (Optional)</label>
+                    <input 
+                        type="text" 
+                        id="reference_number" 
+                        name="reference_number" 
+                        class="form-control" 
+                        placeholder="e.g., Transaction ID, Check number, M-Pesa reference"
+                    >
+                    <small style="color: #666;">For bank transfer: Transaction ID | For M-Pesa: M-Pesa reference | For check: Check number</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Additional Notes (Optional)</label>
+                    <textarea 
+                        id="notes" 
+                        name="notes" 
+                        class="form-control" 
+                        placeholder="Any other relevant information about this payment"
+                        rows="3"
+                    ></textarea>
+                </div>
+                
                 <div class="button-group">
                     <button type="submit" class="btn btn-submit">
                         <i class="fas fa-check-circle"></i> Confirm Payment

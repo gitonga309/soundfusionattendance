@@ -4,13 +4,24 @@ from .forms import UserRegisterForm, AttendanceForm, EventForm, ExpenseReimburse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from .models import AttendanceRecord, Profile, Event, BalanceAdjustment, ExpenseReimbursement, EmployeeOnboarding
+from .models import (
+    AttendanceRecord, Profile, Event, BalanceAdjustment, ExpenseReimbursement, 
+    EmployeeOnboarding, MpesaPayment
+)
 from django.utils import timezone
 from django.db.models import Sum
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 import json
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Template constants
+LOGIN_TEMPLATE = 'attendance/login.html'
+MARK_ATTENDANCE_TEMPLATE = 'attendance/mark_attendance.html'
 
 def home(request):
     """Landing page"""
@@ -53,7 +64,7 @@ def register(request):
             user.save()
             
             # Get or create Profile
-            profile, created = Profile.objects.get_or_create(
+            profile, _ = Profile.objects.get_or_create(
                 user=user,
                 defaults={
                     'phone_number': form.cleaned_data.get('phone_number'),
@@ -64,7 +75,7 @@ def register(request):
             )
             
             # Update if it was created by signal
-            if not created:
+            if _:
                 profile.phone_number = form.cleaned_data.get('phone_number')
                 profile.email = form.cleaned_data.get('email')
                 profile.employment_type = employment_type
@@ -194,11 +205,11 @@ def user_login(request):
             # Check if account is active
             if not user_obj.is_active:
                 messages.error(request, "Your account is inactive. Please contact the administrator for assistance.")
-                return render(request, 'attendance/login.html')
+                return render(request, LOGIN_TEMPLATE)
             
         except User.DoesNotExist:
             messages.error(request, f"Username '{username}' not found. Please check your username and try again or create a new account.")
-            return render(request, 'attendance/login.html')
+            return render(request, LOGIN_TEMPLATE)
         
         # Try to authenticate
         user = authenticate(request, username=username, password=password)
@@ -211,13 +222,13 @@ def user_login(request):
                 return redirect('dashboard')
             else:
                 messages.error(request, "Your account is inactive. Please contact the administrator.")
-                return render(request, 'attendance/login.html')
+                return render(request, LOGIN_TEMPLATE)
         else:
             # Authentication failed - likely wrong password
             messages.error(request, "Incorrect password. Please try again. If you forgot your password, please contact the administrator.")
-            return render(request, 'attendance/login.html')
+            return render(request, LOGIN_TEMPLATE)
 
-    return render(request, 'attendance/login.html')
+    return render(request, LOGIN_TEMPLATE)
 
 @login_required
 def dashboard(request):
@@ -348,7 +359,7 @@ def view_attendance(request):
     # Get balance adjustments made by admin - with error handling
     try:
         adjustments = BalanceAdjustment.objects.filter(user=user).select_related('adjusted_by').order_by('-date')
-    except Exception as e:
+    except Exception:
         adjustments = []
         messages.warning(request, "Could not load adjustment history.")
     
@@ -436,7 +447,7 @@ def mark_attendance(request):
                 })
         except (ValueError, TypeError):
             messages.error(request, "Overtime hours must be a valid number")
-            return render(request, 'attendance/mark_attendance.html', {
+            return render(request, MARK_ATTENDANCE_TEMPLATE, {
                 'form': AttendanceForm(instance=record), 
                 'record': record,
                 'today': today
@@ -473,7 +484,7 @@ def mark_attendance(request):
     else:
         form = AttendanceForm(instance=record)
 
-    return render(request, 'attendance/mark_attendance.html', {
+    return render(request, MARK_ATTENDANCE_TEMPLATE, {
         'form': form, 
         'record': record,
         'today': today
@@ -527,10 +538,9 @@ def edit_attendance(request, record_id):
             # Profile doesn't exist, create it
             profile, _ = Profile.objects.get_or_create(user=request.user)
             employment_type = profile.employment_type
-        if employment_type == 'salaried':
-            old_earned = record.overtime_hours * 100
-        else:
-            old_earned = 1000 + (record.overtime_hours * 100)
+        
+        old_overtime = record.overtime_hours
+        old_earned = record.amount_paid
         
         # Update record with new overtime
         record.overtime_hours = overtime_hours
@@ -541,9 +551,9 @@ def edit_attendance(request, record_id):
         else:
             new_earned = 1000 + (overtime_hours * 100)
         
-        # Update amount_paid: subtract old earned amount, add new earned amount
-        # This accounts for admin adjustments that may have been made
-        record.amount_paid = (record.amount_paid - old_earned) + new_earned
+        # Update amount_paid to the new earned amount
+        # The balance signal will handle the recalculation properly
+        record.amount_paid = new_earned
         
         record.overtime_edited = True  # Mark as edited
         record.save()
@@ -551,8 +561,13 @@ def edit_attendance(request, record_id):
         # Balance will be automatically recalculated by signal handler
         # Signal will sum all unpaid records + all adjustments
         
-        old_ot = record.original_overtime_hours if hasattr(record, 'original_overtime_hours') else 0
-        messages.success(request, f"Attendance updated! Overtime changed from {old_ot}h to {overtime_hours}h. You cannot edit this again today.")
+        difference = new_earned - old_earned
+        if difference > 0:
+            messages.success(request, f"Attendance updated! Overtime changed from {old_overtime}h to {overtime_hours}h. Additional amount due: KSH {difference}")
+        elif difference < 0:
+            messages.success(request, f"Attendance updated! Overtime changed from {old_overtime}h to {overtime_hours}h. Overpaid amount: KSH {abs(difference)}")
+        else:
+            messages.success(request, f"Attendance updated! Overtime changed from {old_overtime}h to {overtime_hours}h.")
         return redirect('view_attendance')
 
     events = Event.objects.all().order_by('-date')
@@ -597,8 +612,8 @@ def admin_dashboard(request):
     users = users.prefetch_related('profile')  # Prefetch profile to avoid N+1 queries
     
     for user in users:
-        profile, created = Profile.objects.get_or_create(user=user)
-        if created:
+        profile, _ = Profile.objects.get_or_create(user=user)
+        if _:
             profile.balance = 0
             profile.save()
             
@@ -655,8 +670,8 @@ def manage_balances(request):
     total_balance = 0
     
     for user in users:
-        profile, created = Profile.objects.get_or_create(user=user)
-        if created:
+        profile, _ = Profile.objects.get_or_create(user=user)
+        if _:
             profile.balance = 0
             profile.save()
         
@@ -684,30 +699,6 @@ def user_logout(request):
     
     return render(request, 'attendance/logout.html')
 
-
-@login_required
-def my_assignments(request):
-    """Show events the current user is assigned to (setup crew or event crew)"""
-    user = request.user
-    
-    # Get events where user is in setup_crew
-    setup_assignments = Event.objects.filter(setup_crew=user).order_by('setup_date')
-    
-    # Get events where user is in event_crew
-    event_assignments = Event.objects.filter(event_crew=user).order_by('date')
-    
-    context = {
-        'setup_assignments': setup_assignments,
-        'event_assignments': event_assignments,
-        'setup_count': setup_assignments.count(),
-        'event_count': event_assignments.count(),
-        'all_count': setup_assignments.count() + event_assignments.count(),
-    }
-    
-    return render(request, 'attendance/my_assignments.html', context)
-
-
-# ========== EVENT & EQUIPMENT MANAGEMENT ==========
 
 @login_required
 def events_list(request):
@@ -889,6 +880,25 @@ def approve_reimbursement(request, reimbursement_id):
 
 @login_required
 @user_passes_test(is_admin)
+def approve_reimbursement(request, reimbursement_id):
+    """Approve a reimbursement request"""
+    reimbursement = get_object_or_404(ExpenseReimbursement, pk=reimbursement_id)
+    
+    if request.method == 'POST':
+        reimbursement.status = 'approved'
+        reimbursement.approved_by = request.user
+        reimbursement.approved_at = timezone.now()
+        reimbursement.save()
+        
+        messages.success(request, f"Reimbursement for {reimbursement.user.username} approved! Balance updated.")
+        return redirect('admin_reimbursements')
+    
+    context = {'reimbursement': reimbursement}
+    return render(request, 'attendance/reimbursement_action.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
 def reject_reimbursement(request, reimbursement_id):
     """Reject a reimbursement request"""
     reimbursement = get_object_or_404(ExpenseReimbursement, pk=reimbursement_id)
@@ -906,12 +916,120 @@ def reject_reimbursement(request, reimbursement_id):
     return render(request, 'attendance/reject_reimbursement.html', context)
 
 
+@login_required
+@user_passes_test(is_admin)
+def send_reimbursement_stk_push(request, reimbursement_id):
+    """Send STK push for expense reimbursement payment"""
+    reimbursement = get_object_or_404(ExpenseReimbursement, pk=reimbursement_id)
+    
+    if request.method == 'POST':
+        from .mpesa_utils import MpesaClient
+        
+        try:
+            # Get phone number from reimbursement user's profile
+            target_user = reimbursement.user
+            try:
+                phone = target_user.profile.phone_number
+            except AttributeError:
+                profile, _ = Profile.objects.get_or_create(user=target_user)
+                phone = profile.phone_number
+            
+            if not phone:
+                return JsonResponse({'success': False, 'error': f'Phone number not found for user {target_user.username}'})
+            
+            amount = float(reimbursement.amount)
+            
+            # Format phone number correctly for M-Pesa (254XXXXXXXXX without +)
+            if phone.startswith('+254'):
+                phone = phone[1:]
+            elif phone.startswith('254'):
+                pass
+            elif phone.startswith('0'):
+                phone = '254' + phone[1:]
+            else:
+                phone = '254' + phone
+            
+            mpesa_client = MpesaClient()
+            result = mpesa_client.initiate_stk_push(
+                user=target_user,
+                phone_number=phone,
+                amount=int(amount),
+                payment_purpose=f'Reimbursement: {reimbursement.description[:20]}'
+            )
+            
+            if result.get('success'):
+                # Store checkout request ID for tracking
+                reimbursement.checkout_request_id = result.get('checkout_request_id')
+                reimbursement.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'STK push sent successfully to ' + phone,
+                    'checkout_request_id': result.get('checkout_request_id'),
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': result.get('error', 'Failed to initiate STK push')
+                })
+                
+        except Exception as e:
+            logger.error(f"Error sending reimbursement STK push: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'Error: {str(e)}'})
+    
+    return JsonResponse({'error': 'POST required'}, status=405)
+
+
+@login_required
+@user_passes_test(is_admin)
+def confirm_reimbursement_payment(request, reimbursement_id):
+    """Confirm reimbursement payment and update balance"""
+    reimbursement = get_object_or_404(ExpenseReimbursement, pk=reimbursement_id)
+    
+    if request.method == 'POST':
+        try:
+            # Mark reimbursement as paid and approved
+            reimbursement.status = 'approved'
+            reimbursement.is_paid = True
+            reimbursement.approved_by = request.user
+            reimbursement.approved_at = timezone.now()
+            reimbursement.save()
+            
+            # Deduct the reimbursement amount from user's balance
+            # Create a negative balance adjustment to represent the reimbursement deduction
+            user = reimbursement.user
+            profile = user.profile
+            
+            # Create BalanceAdjustment to track the reimbursement deduction
+            BalanceAdjustment.objects.create(
+                user=user,
+                amount=-float(reimbursement.amount),  # Negative because it's a deduction
+                reason=f"Reimbursement payment: {reimbursement.description}",
+                adjusted_by=request.user
+            )
+            
+            # Balance will be automatically recalculated by signal
+            profile.refresh_from_db()
+            
+            messages.success(request, f"Reimbursement for {user.username} marked as paid. New balance: KSH {profile.balance}")
+            return redirect('admin_reimbursements')
+            
+        except Exception as e:
+            logger.error(f"Error confirming reimbursement payment: {str(e)}")
+            messages.error(request, f"Error: {str(e)}")
+            return redirect('admin_reimbursements')
+    
+    context = {'reimbursement': reimbursement}
+    return render(request, 'attendance/confirm_reimbursement_payment.html', context)
+
+
 
 
 @login_required
 def mark_payment(request):
     """Mark payment from user balance"""
-    from .models import PaymentRecord
+    from .models import PaymentRecord, BalanceAdjustment
+    from decimal import Decimal
     
     user = request.user
     profile, created = Profile.objects.get_or_create(user=user)
@@ -919,42 +1037,42 @@ def mark_payment(request):
     if request.method == 'POST':
         amount = request.POST.get('amount')
         payment_method = request.POST.get('payment_method', 'bank_transfer')
+        reference_number = request.POST.get('reference_number', '')
+        notes = request.POST.get('notes', '')
         
         try:
-            amount = float(amount)
+            amount = Decimal(str(amount))
             if amount <= 0:
                 messages.error(request, "Payment amount must be greater than 0.")
-                return redirect('dashboard')
+                return redirect('mark_payment')
             
             if amount > profile.balance:
                 messages.error(request, f"Payment amount cannot exceed your current balance of KSH {profile.balance}.")
-                return redirect('dashboard')
+                return redirect('mark_payment')
             
             # Record the payment
-            payment = PaymentRecord.objects.create(
+            PaymentRecord.objects.create(
                 user=user,
                 amount=amount,
-                payment_method=payment_method
+                payment_method=payment_method,
+                reference_number=reference_number,
+                notes=notes
             )
             
-            # Update user balance
-            old_balance = profile.balance
-            profile.balance = float(profile.balance) - amount
-            profile.save()
-            
-            # Refresh from database to confirm save
-            profile.refresh_from_db()
-            
-            # Track balance adjustment
+            # Create a negative BalanceAdjustment to track the payment
+            # This way, the balance calculation is consistent and transparent
             BalanceAdjustment.objects.create(
                 user=user,
-                reason=f"Payment marked: {payment_method.replace('_', ' ').title()} - KSH {amount}",
-                amount=-amount,
+                amount=-amount,  # Negative because it's a deduction
+                reason=f"Payment marked: {payment_method}" + (f" ({reference_number})" if reference_number else ""),
                 adjusted_by=user
             )
             
-            messages.success(request, f"Payment of KSH {amount} has been marked successfully. Your new balance is KSH {profile.balance}.")
-        except (ValueError, TypeError) as e:
+            # The balance will be automatically recalculated by the signal handler
+            # This is more reliable than manual calculation
+            
+            messages.success(request, f"Payment of KSH {amount} has been marked successfully. Your new balance is KSH {profile.balance - amount}.")
+        except (ValueError, TypeError):
             messages.error(request, "Invalid payment amount.")
         
         return redirect('dashboard')
@@ -1033,3 +1151,253 @@ def reimbursement_action(request, reimbursement_id):
     
     messages.success(request, message)
     return redirect('admin_reimbursements')
+
+# ============= M-PESA PAYMENT VIEWS =============
+@login_required
+def request_mpesa_payment(request):
+    """Request payment via M-Pesa STK push"""
+    if request.method == 'POST':
+        from .mpesa_utils import MpesaClient
+        import json
+        
+        try:
+            data = json.loads(request.body)
+            amount = data.get('amount')
+            phone = data.get('phone')
+            purpose = data.get('purpose', 'Balance Settlement')
+            
+            if not amount or not phone:
+                return JsonResponse({'error': 'Amount and phone required'}, status=400)
+            
+            # Validate amount
+            try:
+                amount = float(amount)
+                if amount <= 0 or amount > 999999:
+                    return JsonResponse({'error': 'Invalid amount'}, status=400)
+            except:
+                return JsonResponse({'error': 'Invalid amount format'}, status=400)
+            
+            # Format phone number (ensure correct format: 254XXXXXXXXX)
+            if phone.startswith('+254'):
+                phone = phone[1:]  # Remove + sign
+            elif phone.startswith('254'):
+                pass  # Already correct
+            elif phone.startswith('0'):
+                phone = '254' + phone[1:]  # Convert 07... to 254...
+            else:
+                phone = '254' + phone  # Add country code
+            
+            # Initiate M-Pesa payment
+            mpesa = MpesaClient()
+            result = mpesa.initiate_stk_push(
+                request.user,
+                phone,
+                amount,
+                purpose
+            )
+            
+            return JsonResponse(result)
+            
+        except Exception as e:
+            logger.error(f"Error in M-Pesa payment: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'POST required'}, status=405)
+
+
+@csrf_exempt
+def mpesa_callback(request):
+    """Handle M-Pesa callback from STK push"""
+    from .mpesa_utils import process_mpesa_callback
+    import json
+    
+    if request.method == 'POST':
+        try:
+            callback_data = json.loads(request.body)
+            success = process_mpesa_callback(callback_data)
+            
+            if success:
+                return JsonResponse({'ResultCode': 0, 'ResultDesc': 'Success'})
+            else:
+                return JsonResponse({'ResultCode': 1, 'ResultDesc': 'Failed'})
+                
+        except Exception as e:
+            logger.error(f"Error processing M-Pesa callback: {str(e)}")
+            return JsonResponse({'ResultCode': 1, 'ResultDesc': 'Error'}, status=500)
+    
+    return JsonResponse({'error': 'POST required'}, status=405)
+
+
+@login_required
+def check_payment_status(request):
+    """Check status of M-Pesa payment"""
+    from .mpesa_utils import MpesaClient
+    
+    if request.method == 'GET':
+        try:
+            payment_id = request.GET.get('payment_id')
+            
+            if not payment_id:
+                return JsonResponse({'error': 'Payment ID required'}, status=400)
+            
+            try:
+                payment = MpesaPayment.objects.get(id=payment_id, user=request.user)
+            except MpesaPayment.DoesNotExist:
+                return JsonResponse({'error': 'Payment not found'}, status=404)
+            
+            # Return current status
+            return JsonResponse({
+                'payment_id': payment.id,
+                'status': payment.status,
+                'amount': str(payment.amount),
+                'receipt_number': payment.receipt_number or None,
+                'completed_at': payment.completed_at.isoformat() if payment.completed_at else None
+            })
+            
+        except Exception as e:
+            logger.error(f"Error checking payment status: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'GET required'}, status=405)
+
+
+# ============= EVENT CREW & CRM VIEWS =============
+# ============= M-PESA STK PUSH ADMIN VIEWS =============
+@login_required
+def stk_push_modal(request):
+    """
+    Show STK push modal and handle payment initiation.
+    GET: Return modal form with pre-filled data
+    POST: Process STK push with M-Pesa
+    """
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    phone = request.GET.get('phone', '')
+    amount = request.GET.get('amount', 0)
+    user_id = request.GET.get('user_id', '')
+    purpose = request.GET.get('purpose', 'balance_payment')
+    
+    if request.method == 'GET':
+        # Format phone number for display
+        if phone:
+            # Clean up phone number for display
+            if phone.startswith('254'):
+                display_phone = '0' + phone[3:]
+            else:
+                display_phone = phone
+        else:
+            display_phone = phone
+        
+        context = {
+            'phone': phone,
+            'display_phone': display_phone,
+            'amount': amount,
+            'user_id': user_id,
+            'purpose': purpose,
+        }
+        return render(request, 'attendance/admin/stk_push_modal.html', context)
+    
+    elif request.method == 'POST':
+        from .mpesa_utils import MpesaClient
+        
+        try:
+            phone = request.POST.get('phone')
+            amount = request.POST.get('amount')
+            user_id = request.POST.get('user_id')
+            purpose = request.POST.get('purpose', 'balance_payment')
+            
+            if not phone or not amount:
+                return JsonResponse({'success': False, 'error': 'Phone and amount are required'})
+            
+            try:
+                amount_int = int(amount)
+                if amount_int < 1 or amount_int > 150000:
+                    return JsonResponse({'success': False, 'error': 'Amount must be between KSH 1 and 150,000'})
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid amount format'})
+            
+            # Format phone number correctly for M-Pesa (254XXXXXXXXX without +)
+            if phone.startswith('+254'):
+                phone = phone[1:]  # Remove + sign
+            elif phone.startswith('254'):
+                pass  # Already in correct format
+            elif phone.startswith('0'):
+                phone = '254' + phone[1:]  # Convert 07... to 254...
+            else:
+                phone = '254' + phone  # Add country code
+            
+            # Get the user being paid
+            target_user = None
+            if user_id:
+                try:
+                    target_user = User.objects.get(pk=user_id)
+                except User.DoesNotExist:
+                    return JsonResponse({'success': False, 'error': 'User not found'})
+            else:
+                target_user = request.user
+            
+            mpesa_client = MpesaClient()
+            result = mpesa_client.initiate_stk_push(
+                user=target_user,
+                phone_number=phone,
+                amount=amount_int,
+                payment_purpose=purpose
+            )
+            
+            if result.get('success'):
+                return JsonResponse({
+                    'success': True,
+                    'message': 'STK push sent successfully. Customer will receive prompt on their phone.',
+                    'checkout_request_id': result.get('checkout_request_id'),
+                    'merchant_request_id': result.get('merchant_request_id'),
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': result.get('error', 'Failed to initiate STK push')
+                })
+                
+        except Exception as e:
+            logger.error(f"Error in STK push: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'Error: {str(e)}'})
+
+
+@login_required
+def check_stk_status(request):
+    """Check STK push payment status"""
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    checkout_id = request.GET.get('checkout_id')
+    if not checkout_id:
+        return JsonResponse({'success': False, 'error': 'Checkout ID required'})
+    
+    try:
+        from .mpesa_utils import MpesaClient
+        mpesa_client = MpesaClient()
+        result = mpesa_client.query_payment_status(checkout_id)
+        return JsonResponse(result)
+    except Exception as e:
+        logger.error(f"Error checking STK status: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def my_assignments(request):
+    """View all events where user is assigned as crew member"""
+    from django.db.models import Q
+    
+    user = request.user
+    
+    # Get all events where user is in setup_crew or event_crew using Q objects
+    # This uses the ManyToManyField to properly filter
+    all_events = Event.objects.filter(
+        Q(setup_crew=user) | Q(event_crew=user)
+    ).distinct().prefetch_related('setup_crew', 'event_crew').order_by('-date')
+    
+    context = {
+        'events': all_events,
+    }
+    
+    return render(request, 'attendance/my_assignments.html', context)

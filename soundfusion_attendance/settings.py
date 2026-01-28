@@ -178,7 +178,35 @@ else:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    
+
+# ============= EMAIL CONFIGURATION FOR CRM NOTIFICATIONS =============
+# Configure email backend (using environment variables for security)
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@soundfusion.local')
+
+# For local development, use console backend if no credentials are set
+if not EMAIL_HOST_USER and not EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# ============= M-PESA CONFIGURATION =============
+# M-Pesa API Credentials (store in environment variables in production)
+MPESA_CONSUMER_KEY = os.environ.get('MPESA_CONSUMER_KEY', 'FiT4hg3x50VAokkOpxAbADAjK17q4TpVrO1bpeYnCwwj0l3o')
+MPESA_CONSUMER_SECRET = os.environ.get('MPESA_CONSUMER_SECRET', 'qpYvdPTfB3vZpSLXRJiY12xw0YDEtuZGWHxu2IyjGHfPQGAy5W4hkku4eAlWN2R8')
+# SAF (Safaricom) default test shortcode - 174379
+MPESA_BUSINESS_SHORT_CODE = os.environ.get('MPESA_BUSINESS_SHORT_CODE', '174379')
+MPESA_PASS_KEY = os.environ.get('MPESA_PASS_KEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919')
+MPESA_INITIATOR_NAME = os.environ.get('MPESA_INITIATOR_NAME', '')
+MPESA_INITIATOR_PASSWORD = os.environ.get('MPESA_INITIATOR_PASSWORD', '')
+MPESA_ENVIRONMENT = os.environ.get('MPESA_ENVIRONMENT', 'sandbox')  # sandbox or production
+
+# M-Pesa callback URL - Point to your hosted domain
+MPESA_CALLBACK_URL = os.environ.get('MPESA_CALLBACK_URL', 'https://sound-fusion-attendance.onrender.com/api/mpesa/callback/')
+
 # Additional security headers for production
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year

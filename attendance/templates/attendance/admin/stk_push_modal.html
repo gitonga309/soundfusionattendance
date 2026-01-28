@@ -1,0 +1,404 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Send M-Pesa Payment{% endblock %}
+
+{% block extrastyle %}
+<style>
+    body {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 10px;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 25px;
+        border-radius: 6px;
+        width: 100%;
+        max-width: 380px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-header {
+        margin-bottom: 20px;
+        border-bottom: 1px solid #e0e0e0;
+        padding-bottom: 12px;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        color: #333;
+        font-size: 20px;
+    }
+
+    .modal-header p {
+        margin: 6px 0 0 0;
+        color: #666;
+        font-size: 12px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+        font-size: 13px;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 13px;
+        transition: border-color 0.3s;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group input[readonly] {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+    }
+
+    .info-box {
+        background-color: #f0f4ff;
+        border-left: 3px solid #667eea;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 3px;
+        font-size: 12px;
+        color: #555;
+    }
+
+    .info-box strong {
+        color: #667eea;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 8px;
+        margin-top: 20px;
+    }
+
+    .btn {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-primary {
+        background-color: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background-color: #5568d3;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.2);
+    }
+
+    .btn-primary:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-secondary {
+        background-color: #f0f0f0;
+        color: #333;
+        border: 1px solid #ddd;
+    }
+
+    .btn-secondary:hover {
+        background-color: #e0e0e0;
+    }
+
+    .loading-state {
+        display: none;
+        text-align: center;
+        padding: 15px;
+    }
+
+    .loading-state.active {
+        display: block;
+    }
+
+    .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 8px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .loading-state p {
+        margin: 0;
+        color: #666;
+        font-size: 12px;
+    }
+
+    .success-state {
+        display: none;
+        text-align: center;
+        padding: 15px;
+    }
+
+    .success-state.active {
+        display: block;
+    }
+
+    .success-icon {
+        font-size: 32px;
+        color: #4caf50;
+        margin-bottom: 8px;
+    }
+
+    .success-state h3 {
+        color: #4caf50;
+        margin: 0 0 6px 0;
+        font-size: 15px;
+    }
+
+    .success-state p {
+        color: #666;
+        font-size: 12px;
+        margin: 0 0 8px 0;
+    }
+
+    .request-id {
+        background-color: #f5f5f5;
+        padding: 6px;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 11px;
+        word-break: break-all;
+        color: #333;
+        margin: 8px 0;
+    }
+
+    .error-message {
+        display: none;
+        background-color: #ffebee;
+        border-left: 3px solid #f44336;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 3px;
+        color: #c62828;
+        font-size: 12px;
+    }
+
+    .error-message.active {
+        display: block;
+    }
+
+    @media (max-width: 480px) {
+        .modal-content {
+            max-width: 100%;
+            padding: 20px;
+        }
+        
+        .modal-header h2 {
+            font-size: 18px;
+        }
+        
+        .btn {
+            font-size: 12px;
+            padding: 9px;
+        }
+        
+        .form-group input,
+        .form-group select {
+            padding: 7px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>💳 Send M-Pesa Payment</h2>
+            <p>Confirm details and send STK push to customer</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="form-wrapper" id="formWrapper">
+            <form id="stkForm">
+                {% csrf_token %}
+
+                <div class="info-box">
+                    📱 <strong>STK push</strong> will be sent to the customer's phone
+                </div>
+
+                <!-- Phone Number Field (Readonly) -->
+                <div class="form-group">
+                    <label for="phone">Phone Number *</label>
+                    <input 
+                        type="tel" 
+                        id="phone" 
+                        name="phone" 
+                        value="{{ display_phone }}"
+                        placeholder="07XXXXXXXX"
+                        required
+                        readonly
+                    />
+                </div>
+
+                <!-- Amount Field (EDITABLE) -->
+                <div class="form-group">
+                    <label for="amount">Amount (KSH) * <span style="color: #667eea; font-weight: 600;">- editable</span></label>
+                    <input 
+                        type="number" 
+                        id="amount" 
+                        name="amount" 
+                        value="{{ amount }}"
+                        min="1" 
+                        max="150000"
+                        required
+                    />
+                </div>
+
+                <!-- Purpose Field (Readonly) -->
+                <div class="form-group">
+                    <label for="purpose">Purpose</label>
+                    <input 
+                        type="text" 
+                        id="purpose" 
+                        name="purpose" 
+                        value="{{ purpose }}"
+                        readonly
+                    />
+                </div>
+
+                <!-- Hidden Fields -->
+                <input type="hidden" id="userId" name="user_id" value="{{ user_id }}">
+
+                <!-- Action Buttons -->
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn" disabled style="opacity: 0.5; cursor: not-allowed;">Send STK Push</button>
+                </div>
+            </form>
+
+            <!-- Loading State -->
+            <div class="loading-state" id="loadingState">
+                <div class="spinner"></div>
+                <p>Sending STK push...</p>
+            </div>
+
+            <!-- Success State -->
+            <div class="success-state" id="successState">
+                <div class="success-icon">✓</div>
+                <h3>Payment STK Sent!</h3>
+                <p>Customer will receive the payment prompt on their phone.</p>
+                <p class="label" style="color: #999; font-size: 11px;">Request ID:</p>
+                <div class="request-id" id="requestId"></div>
+                <div class="button-group" style="margin-top: 15px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.history.back()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('stkForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Get form values
+    const phone = document.getElementById('phone').value;
+    const amount = document.getElementById('amount').value;
+    const purpose = document.getElementById('purpose').value;
+    const userId = document.getElementById('userId').value;
+    
+    // Validate
+    if (!phone || !amount) {
+        showError('Phone and amount are required');
+        return;
+    }
+    
+    const amountInt = parseInt(amount);
+    if (isNaN(amountInt) || amountInt < 1 || amountInt > 150000) {
+        showError('Amount must be between KSH 1 and 150,000');
+        return;
+    }
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('phone', phone);
+    formData.append('amount', amountInt);
+    formData.append('purpose', purpose);
+    formData.append('user_id', userId);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    // Show loading state
+    document.getElementById('formWrapper').style.display = 'none';
+    document.getElementById('loadingState').classList.add('active');
+    document.getElementById('errorMessage').classList.remove('active');
+    
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Show success state
+            document.getElementById('loadingState').classList.remove('active');
+            document.getElementById('successState').classList.add('active');
+            document.getElementById('requestId').textContent = data.checkout_request_id || 'N/A';
+        } else {
+            // Show error
+            showError(data.error || 'Failed to send STK push');
+            document.getElementById('loadingState').classList.remove('active');
+            document.getElementById('formWrapper').style.display = 'block';
+        }
+    } catch (error) {
+        showError('Error: ' + error.message);
+        document.getElementById('loadingState').classList.remove('active');
+        document.getElementById('formWrapper').style.display = 'block';
+    }
+});
+
+function showError(message) {
+    const errorEl = document.getElementById('errorMessage');
+    errorEl.textContent = message;
+    errorEl.classList.add('active');
+}
+</script>
+{% endblock %}
